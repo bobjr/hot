@@ -16,8 +16,8 @@ Another facebook haystack implementation in golang.
 Features
 ========
 
-meta data
----------
+meta data management
+--------------------
 
 ::
 
@@ -32,5 +32,13 @@ space
 -----
 Each file metadata is 40B and lookup with O(1).
 
+extras
+------
+
+- replication
+
+- auto gzip
+
+- auto add/rm server without re-balancing
 
 
