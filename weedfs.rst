@@ -68,6 +68,7 @@ TestCase
 Case                            MasterNode                      VolumnNode(s)
 =============================== =============================== =============
 Down                            X                               X
+Recover                         X                               X
 Restart                         X                               X
 DisFail                         X                               X
 NetFail                         X                               X
@@ -84,6 +85,8 @@ RmServer                                                        X
                           |                     |               |
                            -------------------------------------
                                            |
+                                           | StartRefreshWritableVolumes
+                                           |
                                        MasterNode
 
 
@@ -93,39 +96,77 @@ Internals
 Abstractions
 ------------
 
-- Needle
+::
 
-- Volume
+
+    Topology DataCenter Rack DataNode
+       |        |        |      |
+        ------------------------
+                    |
+                    | inheritance
+                    V
+           ------->Node<----------
+          |         |             |
+          |         |             |
+           - parent-|- children -
+                    |
+                    |
+                    |- FreeSpace()
+                    |- Id()
+                    |-
+                    |-
+                    
+
+    Topology
+      |
+      |- Sequencer
+      |
+      |- []VolumeLayout
+      |         |- replicationType
+      |         |- {VolumeId: VolumeLocationList}
+      |         |               |
+      |         |                - []DataNode
+      |         |
+      |         |- pulse
+      |         |- volumeSizeLimit
+      |          - writables []VolumeId
+      |
+      |
+       - DataCenter
+           |
+            - Rack
+               |
+                - DataNode
+                    |
+                    |- ip:port
+                    |- publicUrl
+                    |- lastSeenTimestamp
+                    |- isDead
+                     - {VolumeId: VolumeInfo}
+                                     |
+                                     |- id
+                                     |- size
+                                     |- replicationType
+                                     |- fileCount
+                                      - deleteCount
+
+
+
+
+- Needle
 
 - Store
 
-- Node
-
-  - Rack
-
-  - DataCenter
-
-- Sequence
-
-
-::
-
-            Store
-             |       
-             |- Volume       
-             |- Volume       
-             |- Volume       
-             |       
-                    
 
 fid
 ---
 
-#. VolumnId
 
-#. File Key
+#. VolumnId uint32
 
-#. File Cookie(4 Byte)
+# File Key uint64(variable length)
+
+#. File Cookie uint32(fixed length)
 
 ::
 
@@ -134,6 +175,8 @@ fid
         3,01637037d6
         - --
         1 2
+
+      FileKey = (2+3)[0:len-4]
 
 MasterNode
 ----------
@@ -188,5 +231,3 @@ file
         Hashcode uint32
     }
 
-topology
---------
