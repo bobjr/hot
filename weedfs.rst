@@ -17,6 +17,10 @@ Architecture
 
 通过配置文件xml知道某个ip在哪个ds/rack
 
+Node.freeSpace = maxVolCnt - activeVolCnt
+
+每个volume的最大空间的固定的：32G，因此cnt就觉得了可以容纳多大的空间
+
 Write
 -----
 
@@ -95,6 +99,35 @@ RmServer                                                        X
 Internals
 =========
 
+::
+
+
+                        Topology
+                            |
+      ---------------------------
+     |              |            |
+    DataCenter  DataCenter  DataCenter
+                    |
+          ----------------------
+         |           |          |
+        Rack        Rack       Rack
+                     |
+                    ------------------------
+                   |            |           |
+                DataNode    DataNode     DataNode
+                                |
+                              Store
+                                |
+                        ---------------
+                       |       |       |
+                    Volume  Volume  Volume(haystack)
+                                       |
+                                   ------
+                                  |      |
+                                 idex   data
+
+
+
 Abstractions
 ------------
 
@@ -153,7 +186,8 @@ Abstractions
                                      |- replicationType     |
                                      |- fileCount           |
                                       - deleteCount         |
-              Volume                                        |
+                                                            |
+                        Volume(volumeId=filename)           |
              -----------------------------------------------
             | data                                  | index
      -----------------                           ---------------
