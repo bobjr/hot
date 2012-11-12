@@ -15,6 +15,8 @@ weed-fs
 Architecture
 ============
 
+通过配置文件xml知道某个ip在哪个ds/rack
+
 Write
 -----
 
@@ -120,18 +122,20 @@ Abstractions
     Topology
       |
       |- Sequencer
+      |     |
+      |      - fileId
       |
-      |- []VolumeLayout
+      |- Lookup(volumeId) -> []DataNode
+      |
+      |- []VolumeLayout(每种replica type一个VolumeLayout item)
       |         |- replicationType
-      |         |- {VolumeId: VolumeLocationList}
-      |         |               |
-      |         |                - []DataNode
-      |         |
       |         |- pulse
       |         |- volumeSizeLimit
-      |          - writables []VolumeId
-      |
-      |
+      |         |- writables []VolumeId
+      |          - {VolumeId: VolumeLocationList}
+      |                         |
+      |                          - []DataNode
+      |          
        - DataCenter
            |
             - Rack
@@ -144,13 +148,36 @@ Abstractions
                     |- isDead
                      - {VolumeId: VolumeInfo}
                                      |
-                                     |- id
-                                     |- size
-                                     |- replicationType
-                                     |- fileCount
-                                      - deleteCount
-
-
+                                     |- id ----------------- 
+                                     |- size                |
+                                     |- replicationType     |
+                                     |- fileCount           |
+                                      - deleteCount         |
+              Volume                                        |
+             -----------------------------------------------
+            | data                                  | index
+     -----------------                           ---------------
+    | 1(magic)        | 1B ---                  | @file key     | 8B ---
+    |-----------------|       |                 |---------------|       |
+    | replicationType | 1B    | superblock      | offset        | 4B    | 1 item
+    |-----------------|       |                 |---------------|       |
+    | 0(reserved)     | 6B ---                  | @data size    | 4B ---
+    |-----------------|                         |---------------|
+    | file cookie     | 4B ---                  | items ...     |
+    |-----------------|       |                 |---------------|
+    | file key        | 8B    |                 |               |
+    |-----------------|       |
+    | data size       | 4B    |
+    |-----------------|       | needle
+    | []data          | xB    |
+    |-----------------|       |
+    | CRC checksum    | 4B    |
+    |-----------------|       |
+    | []padding       | xB ---
+    |-----------------|
+    | needle ....     |
+    |-----------------|
+    |                 |
 
 
 - Needle
@@ -192,61 +219,4 @@ VolumeNode
 
     {key: <offset, size>}
 
-
-data file
-^^^^^^^^^
-
-superblock, 8 byte
-
-::
-
-     -----------------
-    | 1(magic)        | 1B ---
-    |-----------------|       |
-    | replicationType | 1B    | superblock
-    |-----------------|       |
-    | 0(reserved)     | 6B ---
-    |-----------------|
-    | cookie          | 4B ---
-    |-----------------|       |
-    | id              | 8B    |
-    |-----------------|       |
-    | data size       | 4B    |
-    |-----------------|       | needle
-    | []data          | xB    |
-    |-----------------|       |
-    | CRC checksum    | 4B    |
-    |-----------------|       |
-    | []padding       | xB ---
-    |-----------------|
-    | needle ....     |
-    |-----------------|
-
-
-
-index file
-^^^^^^^^^^
-
-::
-
-    byte
-    ====
-    0-7   key       64b
-    8-11  offset    32b
-    12-15 size      32b
-
-::
-
-    type VolumeId uint32
-
-file
-----
-
-::
-
-    type FileId struct {
-        VolumeId storage.VolumeId
-        Key uint64
-        Hashcode uint32
-    }
 
