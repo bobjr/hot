@@ -17,7 +17,7 @@ TODO
 
 - what if we prevent from dup file contents?
 
-- blah
+- how replication done?
 
 Architecture
 ============
@@ -40,6 +40,19 @@ Node.freeSpace = maxVolCnt - activeVolCnt
 
 Write
 -----
+
+procedure
+
+::
+
+        dir/assign
+            |
+        
+            |
+        dir/assign
+            |
+        dir/assign
+
 
 ::
 
@@ -143,7 +156,10 @@ Internals
                                        |
                                    ------
                                   |      |
-                                 idex   data
+                                index   data
+                                  |      |
+                                   ------
+                                   needle
 
 
 
@@ -151,6 +167,43 @@ Abstractions
 ------------
 
 ::
+
+
+                                 - writables []vid
+                                |- vid2location {vid: []DataNode}
+              replicaType       |
+    topology -------------> VolumeLayout
+
+
+
+                -------------    -------------    -------------    ----------------
+    topology - | replicaType |->| replicaType |->| replicaType |->| replicaType... |
+                -------------    -------------    -------------    ----------------
+                                      | 
+                                      | VolumeLayout
+                                      | 
+                -------------    -------------    -------------    ----------------
+               | volumeId    |->| volumeId    |->| volumeId    |->| volumeId ...   |
+                -------------    -------------    -------------    ----------------
+                    |
+                    | VolumeLocationList
+                    |
+                -------------    -------------    -------------    ----------------
+               | DataNode    |->| DataNode    |->| DataNode    |->| DataNode ...   |
+                -------------    -------------    -------------    ----------------
+                                                       |
+                -------------    -------------    -------------    ----------------
+               | volumeId    |->| volumeId    |->| volumeId    |->| volumeId ...   |
+                -------------    -------------    -------------    ----------------
+                    |
+                    | VolumeInfo
+                    |
+                -------------    
+               | volumeId    |
+               | size        |
+               | replicaType |
+                ------------- 
+
 
 
     Topology DataCenter Rack DataNode
@@ -173,10 +226,7 @@ Abstractions
 
     Topology
       |
-      |- Sequencer
-      |     |
-      |      - fileId
-      |
+      |- Sequencer(fileId generator)
       |- Lookup(volumeId) -> []DataNode
       |
       |- []VolumeLayout(每种replica type一个VolumeLayout item)
