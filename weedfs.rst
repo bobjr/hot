@@ -200,9 +200,28 @@ superblock, 8 byte
 
 ::
 
-    byte0 1
-    byte1 replicationType
-    byte2-7 0
+     -----------------
+    | 1(magic)        | 1B ---
+    |-----------------|       |
+    | replicationType | 1B    | superblock
+    |-----------------|       |
+    | 0(reserved)     | 6B ---
+    |-----------------|
+    | cookie          | 4B ---
+    |-----------------|       |
+    | id              | 8B    |
+    |-----------------|       |
+    | data size       | 4B    |
+    |-----------------|       | needle
+    | []data          | xB    |
+    |-----------------|       |
+    | CRC checksum    | 4B    |
+    |-----------------|       |
+    | []padding       | xB ---
+    |-----------------|
+    | needle ....     |
+    |-----------------|
+
 
 
 index file
