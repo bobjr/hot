@@ -24,6 +24,16 @@ Architecture
 
 通过配置文件xml知道某个ip在哪个ds/rack
 
+FileId:
+
+::
+
+    Key = Uint64toBytes(SequencerVal)
+    Cookie = Uint32toBytes(rand.Uint32())
+
+    final = vid, hex.EncodeToString(Key + Cookie)
+
+
 Node.freeSpace = maxVolCnt - activeVolCnt
 
 每个volume的最大空间的固定的：32G，因此cnt就觉得了可以容纳多大的空间
