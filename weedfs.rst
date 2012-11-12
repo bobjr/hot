@@ -12,6 +12,13 @@ weed-fs
 .. contents:: Table Of Contents
 .. section-numbering::
 
+TODO
+====
+
+- what if we prevent from dup file contents?
+
+- blah
+
 Architecture
 ============
 
@@ -112,13 +119,15 @@ Internals
          |           |          |
         Rack        Rack       Rack
                      |
-                    ------------------------
-                   |            |           |
-                DataNode    DataNode     DataNode
-                                |
-                              Store
-                                |
-                        ---------------
+                    ------------------------                        ^
+                   |            |           |                       |
+                DataNode    DataNode     DataNode                   |
+                                |                               master node
+    -----------------------------------------------------------------------------
+                                |                               volume node
+                              Store                                 |
+                                |                                   |
+                        ---------------                             V
                        |       |       |
                     Volume  Volume  Volume(haystack)
                                        |
@@ -197,14 +206,14 @@ Abstractions
     |-----------------|       |                 |---------------|       |
     | 0(reserved)     | 6B ---                  | @data size    | 4B ---
     |-----------------|                         |---------------|
-    | file cookie     | 4B ---                  | items ...     |
-    |-----------------|       |                 |---------------|
-    | file key        | 8B    |                 |               |
-    |-----------------|       |
-    | data size       | 4B    |
-    |-----------------|       | needle
+    | file cookie     | 4B --- --               | items ...     |
+    |-----------------|       |  |              |---------------|
+    | file key        | 8B    |  | header       |               |
+    |-----------------|       |  |
+    | data size       | 4B ------ 
+    |-----------------|       | 
     | []data          | xB    |
-    |-----------------|       |
+    |-----------------|       | needle
     | CRC checksum    | 4B    |
     |-----------------|       |
     | []padding       | xB ---
