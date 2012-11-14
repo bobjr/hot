@@ -27,3 +27,12 @@ file.torrent
     hash
     url of tracker
 
+
+Pastry
+======
+
+Each node knows its predecessor and successor, called its leaf set. Range is from its predecessor to successor.
+
+To find owner(i), node n des the following:
+
+从leafset开始找，没找到，则
