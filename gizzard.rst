@@ -17,10 +17,27 @@ Intro
 
 gizzard是后者。
 
+stateless
+
+DataSource
+----------
+
+原则上只要写操作幂等(也就是写操作与顺序无关)则都可以支持
+
+- mysql
+
+- lucene
+
+- redis
+
+- memcache
+
 Replication
 -----------
 
 采用 replication tree，由 **gizzard** 负责分发，可以跨越 datacenter
+
+为memcache提供了副本的功能
 
 
 Internals
