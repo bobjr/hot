@@ -12,6 +12,18 @@ youtube's vitess/vtocc
 Goal
 ====
 
+Assumption
+----------
+
+mysql
+^^^^^
+
+- good at storage
+
+- bad at scaling
+
+  not able to coordinate many instances of a single logical schema 
+
 ::
 
                     client
@@ -26,9 +38,10 @@ Goal
          c |  Optimizer                 |
             ---------------------------- 
                       |
-                      |
-            ---------------------------- 
-           |  Connection handler        |
+                      |------------------------------------------
+                      |                         |         |      |
+            ----------------------------      -----     -----   -----
+           |  Connection handler        |     mysql     mysql   mysql
          m |----------------------------|
          y |  QueryCache | SqlParser    |
          s |----------------------------|
