@@ -19,6 +19,10 @@ TODO
 
 - how replication done?
 
+- count is for what?
+
+  sequencer return fid
+
 Architecture
 ============
 
@@ -103,6 +107,9 @@ TestCase
 =============================== =============================== =============
 Case                            MasterNode                      VolumnNode(s)
 =============================== =============================== =============
+bottleneck
+容量                            
+数据迁移
 Down                            X                               X
 Recover                         X                               X
 Restart                         X                               X
@@ -169,40 +176,28 @@ Abstractions
 ::
 
 
+      Sequencer     Topology ----------- 
+         |              |               |
+         |              | replicaType   |
+         |              |               |
+         |---<------VolumeLayout        |
+         V              |               |lookup(vid)
+      PickNewVid        | vid           |
+                        |               |
+                    DataNode <----------
+                        |
+                        | vid
+                        |
+                    VolumeInfo
+
+
+
+
                                  - writables []vid
                                 |- vid2location {vid: []DataNode}
-              replicaType       |
-    topology -------------> VolumeLayout
-
-
-
-                -------------    -------------    -------------    ----------------
-    topology - | replicaType |->| replicaType |->| replicaType |->| replicaType... |
-                -------------    -------------    -------------    ----------------
-                                      | 
-                                      | VolumeLayout
-                                      | 
-                -------------    -------------    -------------    ----------------
-               | volumeId    |->| volumeId    |->| volumeId    |->| volumeId ...   |
-                -------------    -------------    -------------    ----------------
-                    |
-                    | VolumeLocationList
-                    |
-                -------------    -------------    -------------    ----------------
-               | DataNode    |->| DataNode    |->| DataNode    |->| DataNode ...   |
-                -------------    -------------    -------------    ----------------
-                                                       |
-                -------------    -------------    -------------    ----------------
-               | volumeId    |->| volumeId    |->| volumeId    |->| volumeId ...   |
-                -------------    -------------    -------------    ----------------
-                    |
-                    | VolumeInfo
-                    |
-                -------------    
-               | volumeId    |
-               | size        |
-               | replicaType |
-                ------------- 
+              replicaType       |                           |
+    topology -------------> VolumeLayout                    |- ip:port
+                                                            |- volumes {vid: VolumeInfo}
 
 
 
@@ -282,15 +277,12 @@ Abstractions
     |-----------------|
     |                 |
 
+    each file meta space: data(4+8+4+4) + index(8+4+4) = 36
 
-- Needle
-
-- Store
 
 
 fid
 ---
-
 
 #. VolumnId uint32
 
@@ -298,28 +290,14 @@ fid
 
 #. File Cookie uint32(fixed length)
 
+#. delta(optional)
+
 ::
 
             3
             --------
-        3,01637037d6
+        3,01637037d6_3
         - --
         1 2
 
       FileKey = (2+3)[0:len-4]
-
-MasterNode
-----------
-
-::
-
-    {VolumeId: <url, free size>}
-
-VolumeNode
-----------
-
-::
-
-    {key: <offset, size>}
-
-
