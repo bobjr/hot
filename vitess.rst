@@ -120,6 +120,14 @@ Features
 
 - zero downtime restarts
 
+- embedded sql parser
+  
+  auto anti-sql-inject/bind vars for query to reuse query plans
+
+- tansaction
+
+- 
+
 Assumption
 ----------
 
