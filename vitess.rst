@@ -101,8 +101,24 @@ Related Projects
 
 - 变形虫
 
-Goal
-====
+Vitess
+======
+
+Intro
+-----
+
+Open source 2012-2
+
+Features
+--------
+
+- self management
+
+- external replication
+
+- range based shards
+
+- zero downtime restarts
 
 Assumption
 ----------
