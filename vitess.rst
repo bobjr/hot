@@ -9,6 +9,98 @@ youtube's vitess/vtocc
 .. contents:: Table Of Contents
 .. section-numbering::
 
+DBMan
+=======
+
+Call Path
+---------
+
+coordinator?
+
+::
+
+                                     php
+                                      |
+                           LCache - kproxy ---------------------------------
+                                      |                                     |
+                              ------------------------                      |
+                             |        |               |                     |   
+                          visitman  friendman     userman                   |
+                             |        |               |                     |
+                              ------------------------                      |
+                                          |                                 |
+                                          | persistant connection #?        |
+                                          V                                 |
+                            ------------------------------                  |
+                           |                dbman cluster |<----------------
+                           |                              |
+                           |    dbman   dbman    dbman    | stateless
+                           |                              |
+                           |                 mysql client |
+                            ------------------------------
+                                        |
+                                pthread | each dbman has 6 persistant conn with each mysql instance
+                    libmysqlclient_r.so | totals 6 * 700 = 4300 tcp conn on each dbman
+                                        |
+                               -----------------------------
+                              |       |       |             |
+                            mysql1  mysql2  mysql...     mysql700
+                              |
+                         conn pool size = 6 * #dbman = 1000 ?
+
+
+Roles
+-----
+
+- shard routing
+
+- execute sql query
+
+Routining
+---------
+
+::
+
+    (kind, split_key)
+        |
+        | lookup(kind)
+        V
+    kind_setting
+        |
+        | lookup(kind, no=split_key % table_num)
+        V
+    table_setting
+        |
+        | lookup(sid)
+        V
+    server_setting
+        |
+    (host, port, user, pass)
+
+
+Problem
+-------
+
+- hard to rebalance
+
+  - can only scale up to 2**N shards
+
+  - need 50% relocate data when N=1
+
+  - has stop-the-world
+
+- key not sorted
+
+
+Related Projects
+================
+
+- gizzard by twitter
+
+- vitess by youtube
+
+- 变形虫
+
 Goal
 ====
 
