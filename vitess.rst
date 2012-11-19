@@ -101,8 +101,50 @@ Related Projects
 
 - 变形虫
 
+- hbase
+
+  ::
+
+            rowKey
+              |
+            ZooKeeper
+              |
+              | -ROOT- rs
+              |
+            RegionServer
+              |
+              | .META. rs
+              |
+            RS of this rowKey
+
+
 Vitess
 ======
+
+Metrics
+-------
+
+- 25572 line of code
+
+- 135 files
+
+Installation
+------------
+
+::
+
+        export GOPATH=$HOME
+        mkdir -p $HOME/src/code.google.com/p/vitess
+        hg clone -u weekly https://code.google.com/p/vitess/ $HOME/src/code.google.com
+        cd $HOME/src/code.google.com/p/vitess
+        export MYSQL_CONFIG=/usr/local/mysql/bin/mysql_config
+        export LD_LIBRARY_PATH
+        ./bootstrap.sh
+        source dev.env
+
+        cd go
+        make
+
 
 Intro
 -----
@@ -116,7 +158,9 @@ Features
 
 - external replication
 
-- range based shards
+- range based sharding
+
+- caching
 
 - zero downtime restarts
 
@@ -126,7 +170,15 @@ Features
 
 - tansaction
 
-- 
+- fail-safe
+
+
+Performance
+-----------
+
+- 10k qps
+
+  GC tuned
 
 Assumption
 ----------
@@ -144,7 +196,7 @@ mysql
 
                     client
                       |
-                      | RPC/bson
+                      | RPC with bson/gob/json codec over tranport tcp/http
                       |
             ---------------------------- 
          v |  Connection handler        |
