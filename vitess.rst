@@ -9,6 +9,9 @@ youtube's vitess/vtocc
 .. contents:: Table Of Contents
 .. section-numbering::
 
+
+logical vs physical database
+
 DBMan
 =======
 
@@ -99,7 +102,7 @@ Related Projects
 
 - vitess by youtube
 
-- 变形虫
+- Amoeba
 
 - hbase
 
@@ -160,6 +163,16 @@ Features
 
 - range based sharding
 
+  auto_increment will not work, split key should be distributed randomly
+
+- auto split a shard into 2 when it is hot
+
+  auto merge shards into 1
+
+- online alter schema
+
+  deploy DDL to offline replicas and reparenting because it can elect a new master
+
 - caching
 
 - zero downtime restarts
@@ -192,6 +205,8 @@ mysql
 
   not able to coordinate many instances of a single logical schema 
 
+- not good at random access table query cache
+
 ::
 
                     client
@@ -219,3 +234,69 @@ mysql
             ---------------------------- 
 
 
+connection pool
+---------------
+
+.. image:: http://wiki.vitess.googlecode.com/hg/vtpools.png
+
+::
+
+
+        reserved_pool
+
+        conn_pool
+
+        active_tx_pool
+
+        active_pool
+
+zk
+--
+
+::
+
+    /vt
+     |
+     |- tablets
+     |     |
+     |     |- <uid>
+     |          |
+     |          |- action
+     |
+     |- keyspaces
+           |
+           |- <keyspace>
+                 |
+                 |- shards
+                      |
+                      |- <shard id>
+      
+
+Tablet
+------
+in zk
+
+- vtocc
+
+  Query server
+
+  RPC front-end to mysql
+
+
+- vttablet
+
+  local
+
+  Serves queries and performs housekeeping jobs
+
+  -tablet-path /vt/tablets/<uid>
+
+  pathParts := strings.Split(zkTabletPath, "/")
+  pathParts[len(pathParts)-2] === "tablets"
+
+
+
+
+- vtctl
+
+  global 
