@@ -24,8 +24,8 @@ query router
 DBMan
 =======
 
-Call Path
----------
+Topology
+--------
 
 coordinator?
 
@@ -52,12 +52,13 @@ coordinator?
                            |                 mysql client |
                             ------------------------------
                                         |
-                                pthread | each dbman has 6 persistant conn with each mysql instance
-                    libmysqlclient_r.so | totals 6 * 700 = 4300 tcp conn per dbman
-                                        V
-                               -----------------------------
-                              |       |       |             |
-                            mysql1  mysql2  mysql...     mysql700
+                                pthread | 6 persistant conn to each mysql instance per dbman
+                    libmysqlclient_r.so | totals 6 * 700 = 4300
+                                        |
+                                        V internal replication
+                               ---------------------------------
+                              |       |       |      |          |
+                            mysql1  mysql2  mysql3  ...     mysql700
                               |
                          conn pool size = 6 * #dbman = 1000 ?
 
@@ -88,92 +89,104 @@ Related Projects
 
 - gizzard by twitter
 
+  https://github.com/twitter/gizzard
+
 - spider storage engine
 
   http://spiderformysql.com/
 
 - vitess by youtube
 
+  http://code.google.com/p/vitess/
+
 - Amoeba
 
-- hbase
-
-  ::
-
-            rowKey
-              |
-            ZooKeeper
-              |
-              | -ROOT- rs
-              |
-            RegionServer
-              |
-              | .META. rs
-              |
-            RS of this rowKey
+  http://sourceforge.net/projects/amoeba/
 
 
 Vitess
 ======
 
-Metrics
--------
+Intro
+-----
+
+- Open source 2012-2
+
+  still very active
 
 - 25572 line of code
 
 - 135 files
 
+- golang plus python client
+
+
 Usage
 -----
 
-=> SqlQuery.GetSessionId(dbname)
-<= sessionId (randInt64)
+RpcClient
+^^^^^^^^^
 
-=> SqlQuery.Begin(sessionId)
-<= transactionId (atomicInt64)
+::
 
-=> SqlQuery.Commit(sessionId, transactionId)
-<= err
+    => SqlQuery.GetSessionId(dbname)
+    <= sessionId (randInt64)
+    
+    => SqlQuery.Begin(sessionId)
+    <= transactionId (atomicInt64)
+    
+    => SqlQuery.Commit(sessionId, transactionId)
+    <= err
+    
+    => SqlQuery.Rollback(sessionId, transactionId)
+    <= err
+    
+    => SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
+    <= result
 
-=> SqlQuery.Rollback(sessionId, transactionId)
-<= err
 
-=> SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
-<= result
+Cluster
+^^^^^^^
 
-Design
-------
+::
 
-- logical vs physical database
+    vtctl CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
 
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700 6700 test_keyspace 0 master ""
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
 
-Intro
------
+    vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344
+    vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062044
+    vttablet -port 6702 -tablet-path /zk/test_nj/vt/tablets/0000041983
 
-Open source 2012-2
+    vtctl Ping /zk/test_nj/vt/tablets/0000062344
+    vtctl RebuildShard /zk/global/vt/keyspaces/test_keyspace/shards/0
 
 Features
 --------
 
+- logical vs physical database
+
 - self management
 
-- external replication
+  - external replication
 
-- range based sharding
+  - range based sharding
 
-  auto_increment will not work, split key should be distributed randomly
+    auto_increment will not work, split key should be distributed randomly
 
-- auto split a shard into 2 when it is hot
+  - auto split a shard into 2 when it is hot
 
-  auto merge shards into 1
+    auto merge shards into 1
 
-- online alter schema
+  - online alter schema
 
-  deploy DDL to offline replicas and reparenting because it can elect a new master
+    deploy DDL to offline replicas and reparenting because it can elect a new master
+
+  - zero downtime restarts
 
 - caching
-
-- zero downtime restarts
 
 - embedded sql parser
   
@@ -183,22 +196,6 @@ Features
 
 - fail-safe
 
-
-概念
----------
-
-vt = tablet
-keyspace = DatabaseName
-uid = tablet uid
-
-某个keyspace下的tabletserver的uid都不同
-
-Performance
------------
-
-- 10k qps
-
-  GC tuned
 
 Assumption
 ----------
@@ -213,6 +210,8 @@ mysql
   not able to coordinate many instances of a single logical schema 
 
 - not good at random access table query cache
+
+
 
 ::
 
@@ -281,49 +280,66 @@ mysql
             ---------------------------- 
 
 
-connection pool
----------------
+Components
+----------
 
-.. image:: http://wiki.vitess.googlecode.com/hg/vtpools.png
-.. image:: http://zookeeper.apache.org/doc/r3.1.2/images/zkperfRW.jpg
+=============== =========== ==============================
+cmd             rpc server  desc
+=============== =========== ==============================
+vtctl           N           global mgmt tool  tabletmanager.initiator.go  wrangler.
+vttablet        Y           SqlQuery/TabletManager/UmgmtService rpc server, action agent watcher
+
+mysqlctl        N           init/start/shutdown/teardown a mysql instance
+zkctl           N           init/start/shutdown/teardown a zookeeper
+vtaction        N           execute actions
+=============== =========== ==============================
+
+
+Architecture
+------------
+
+TabletType
+^^^^^^^^^^
+ 
+- idle
+
+  standby server without data
+
+- master
+
+- [slave]
+
+  - replica
+
+    a slaved copy of the data ready to be promoted to master
+
+  - rdonly
+
+    a slaved copy of the data for olap load patterns
+
+  - spare
+
+    same as replica except that it does not serve query
+
+  - backup
+
+    a slaved copy of the data, but offline to queries other than backup
+
+    replication sql thread may be stopped
+
+  - lag
+
+    a slaved copy of the data intentionally lagged for pseudo backup
+
+  - scrap
+
+    a machine with data that needs to be wiped
+
+
+DataFlow
+^^^^^^^^
 
 ::
-
-
-        reserved_pool
-
-        conn_pool
-
-        active_tx_pool
-
-        active_pool
-
-zk
---
-
-uid = mysql server id
-
-
-'global' is a special cell
-
-
-keyspace: /zk/global/vt/keyspaces/test_keyspace
-
-zk
-
-- queue for action
-
-- directory lookup
-
-- lock
-
-
-
-`*` is EPHEMERAL
-
-::
-
-
 
            -------    put       ----
           | vtctl | ---------> | zk |            
@@ -338,16 +354,41 @@ zk
         | smart  | query |  ----------          V                                   |
         | client |-------->| vttablet | o----- agent ------ vtaction ---- actor     |
          --------        |  ----------   start       invoke          call   |       |
-                         |                                                 | ctl    |
-                         |                                                 |        |
-                         |                                              --------    |
-                         |                                             | mysqld |   |
+                         |      |                                          | ctl    |
+                         |      | unix sock                                |        |
+                         |      |                                       --------    |
+                         |    umgmt                                    | mysqld |   |
                          |                                              --------    |
                          |                                                          |
                          |                                       per mysql instance |
                           ----------------------------------------------------------
                           
+Diagrams
+--------
 
+.. image:: http://wiki.vitess.googlecode.com/hg/tabletserver.png
+.. image:: http://wiki.vitess.googlecode.com/hg/vtpools.png
+.. image:: http://zookeeper.apache.org/doc/r3.1.2/images/zkperfRW.jpg
+
+zk
+--
+
+Roles
+^^^^^
+
+- queue for action
+
+- directory lookup
+
+- lock
+
+
+Znodes
+^^^^^^
+
+`*` is EPHEMERAL
+
+::
 
     /zk
      |
@@ -401,22 +442,8 @@ zk
 
 
 
-xx
---
-
-cmd/vttablet/vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344 -logfile /vt/vt_0000062344/vttablet.log
-
-=============== =========== ==============================
-cmd             rpc server  desc
-=============== =========== ==============================
-vtctl           N           global mgmt tool  tabletmanager.initiator.go  wrangler.
-vttablet        Y           SqlQuery/TabletManager/UmgmtService rpc server, action agent watcher
-
-mysqlctl        N           init/start/shutdown/teardown a mysql instance
-zkctl           N           init/start/shutdown/teardown a zookeeper
-vtaction        N           execute actions
-=============== =========== ==============================
-
+action
+------
 
 =========================== =====
 action                      value
@@ -437,56 +464,3 @@ SHARD_ACTION_REBUILD        RebuildShard
 
 KEYSPACE_ACTION_REBUILD     RebuildKeyspace
 =========================== =====
-
-
-Tablet
-------
-
-action
-
-global uniq
-cell in zk, json'ed data in zk
-
-TabletType
-
-- idle
-
-- master
-
-- [slave]
-
-  - replica
-
-  - rdonly
-
-  - spare
-    same as replica except that it does not serve query
-
-  - backup
-
-
-
-- vtocc
-
-  Query server
-
-  RPC front-end to mysql
-
-
-- vttablet
-
-  local
-
-  Serves queries and performs housekeeping jobs
-
-  -tablet-path /vt/tablets/<uid>
-
-  pathParts := strings.Split(zkTabletPath, "/")
-  pathParts[len(pathParts)-2] === "tablets"
-
-
-
-
-- vtctl
-
-  global 
