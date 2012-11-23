@@ -10,6 +10,72 @@ youtube's vitess/vtocc
 .. section-numbering::
 
 
+Features
+Design
+Implementation
+
+Usage
+=====
+
+=> SqlQuery.GetSessionId(dbname)
+<= sessionId
+
+=> SqlQuery.Begin(sessionId)
+<= transactionId
+
+=> SqlQuery.Commit(sessionId, transactionId)
+<= err
+
+=> SqlQuery.Rollback(sessionId, transactionId)
+<= err
+
+=> SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
+<= result
+
+
+Test
+====
+
+::
+
+    export VTROOT=/Users/gaopeng/src/code.google.com/p/vitess
+
+    # my.cnf server-id=tablet uid
+    # 1. create dirs and my.cnf on local fs(extra info of vt in my.cnf)
+    # 2. deploy bootstrap mysql db to datadir
+    # 3. startup mysqld  $VTROOT/dist/vt-mysql/bin/mysqld_safe
+    # 4. import _vt_schema.sql
+    mysqlctl -tablet-uid 62344 -port 6700 -mysql-port 3700 init
+
+
+    # <server_id>@<hostname>:<leader_port>:<election_port>:<client_port>
+    # create zoo.cfg and startup zk server
+    zkctl -zk.cfg 1@`hostname`:3801:3802:3803 init
+
+    # just create znode in zk 
+    vtctl -force CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
+
+    # create znode in zk
+    #                path                              hostname  mysqlPort vtPort keyspace      shardId tableType parent
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700      6700   test_keyspace 0       master    ""
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
+
+    # their rpc server
+    vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344
+    vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062044
+
+    # 
+    vtctl RebuildShard /zk/global/vt/keyspaces/test_keyspace/shards/0
+
+    # 
+
+    vtctl Ping /zk/test_nj/vt/tablets/0000062344
+
+
+
+
+
 logical vs physical database
 
 DBMan
@@ -186,6 +252,15 @@ Features
 - fail-safe
 
 
+概念
+---------
+
+vt = tablet
+keyspace = DatabaseName
+uid = tablet uid
+
+某个keyspace下的tabletserver的uid都不同
+
 Performance
 -----------
 
@@ -208,6 +283,46 @@ mysql
 - not good at random access table query cache
 
 ::
+
+    On file system:
+
+        vt
+         |
+         |- zk_global_<uid>
+         |
+         |- zk_<uid>
+         |    |
+         |    |- logs
+         |    |- zoo.cfg
+         |    |- zk.pid
+         |    |- myid
+         |
+         |- vt_<uid>
+              |
+              |- data/
+              |
+              |- bin-logs
+              |     |
+              |     |- vt-<uid>-bin.index
+              |
+              |- relay-logs
+              |     |
+              |     |- relay.info
+              |     |- vt-<uid>-relay-bin.index
+              |
+              |- slow-query.log
+              |- error.log
+              |- master.info
+              |
+              |- mysql.pid
+              |- my.cnf
+              |- mysql.sock
+              |- innodb
+                    |
+                    |- data
+                    |- log
+
+
 
                     client
                       |
@@ -238,6 +353,7 @@ connection pool
 ---------------
 
 .. image:: http://wiki.vitess.googlecode.com/hg/vtpools.png
+.. image:: http://zookeeper.apache.org/doc/r3.1.2/images/zkperfRW.jpg
 
 ::
 
@@ -253,28 +369,137 @@ connection pool
 zk
 --
 
+uid = mysql server id
+
+
+'global' is a special cell
+
+
+keyspace: /zk/global/vt/keyspaces/test_keyspace
+
+zk
+
+- queue for action
+
+- directory lookup
+
+- lock
+
+
+
+`*` is EPHEMERAL
+
 ::
 
-    /vt
+
+
+
+                                zk              
+                                 |
+                                 |
+                                  ------------
+                                              |
+                                              | watch action
+                                              |
+                             vttablet ----- agent ------ vtaction ---- actor
+                                |     start       invoke          call
+                                |
+                                |
+
+
+    /zk
      |
-     |- tablets
+     |- <cell>
      |     |
-     |     |- <uid>
-     |          |
-     |          |- action
+     |     |- vt
+     |        |
+     |        |- tablets
+     |              |
+     |              |---- <uid> => json(Tablet)
+     |                      |
+     |                      |- action
+     |                      |    |
+     |                      |    |- SEQUENCE => json(ActionNode)
+     |                      |
+     |                      |- pid* => hostname:pid
      |
-     |- keyspaces
+     |- local
+     |     |
+     |     |- vt
+     |        |
+     |        |--- ns
+     |              | 
+     |              |- <keyspace>
+     |                      |
+     |                      |- <shard id>
+     |                           |
+     |                           |- <db type> => json(VtnsAddrs)
+     |            
+     |            
+     |- global
            |
-           |- <keyspace>
-                 |
-                 |- shards
-                      |
-                      |- <shard id>
-      
+           |- vt
+              |
+              |- keyspaces
+                    |
+                    |- <keyspace>
+                            |
+                            |- action
+                            |    |
+                            |    |- SEQUENCE => json(ActionNode)
+                            |
+                            |
+                            |- shards
+                                 |
+                                 |- <shard id> => json(Shard)
+                                        |
+                                        |- action
+                                             |
+                                             |- SEQUENCE => json(ActionNode)
+
+
+
+xx
+--
+
+cmd/vttablet/vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344 -logfile /vt/vt_0000062344/vttablet.log
+
+=============== =========== ==============================
+cmd             rpc server  pkg
+=============== =========== ==============================
+vtocc           Y           tabletserver.queryctl.go
+vtaction        Y           tabletmanager.actor.go
+vttablet        Y           SqlQuery and TabletManager rpc server
+vtctl           N           tabletmanager.initiator.go  wrangler.
+zkctl           N           启动、关闭zk server
+=============== =========== ==============================
 
 Tablet
 ------
-in zk
+
+action
+
+global uniq
+cell in zk, json'ed data in zk
+
+TabletType
+
+- idle
+
+- master
+
+- [slave]
+
+  - replica
+
+  - rdonly
+
+  - spare
+    same as replica except that it does not serve query
+
+  - backup
+
+
 
 - vtocc
 
