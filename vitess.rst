@@ -282,6 +282,13 @@ zkctl           N           init/start/shutdown/teardown a zookeeper
 vtaction        N           execute actions
 =============== =========== ==============================
 
+vttablet startup
+
+::
+
+    select table_name, table_type, unix_timestamp(create_time), table_comment from information_schema.tables where table_schema = database()
+
+
 
 Architecture
 ------------
@@ -433,17 +440,18 @@ Znodes
 action
 ------
 
-=========================== =====
-action                      value
-=========================== =====
-TABLET_ACTION_PING          Ping
+
+=========================== =================== =====
+action                      value               exec
+=========================== =================== =====
+TABLET_ACTION_PING          Ping                
 TABLET_ACTION_SLEEP         Sleep
 TABLET_ACTION_SET_RDONLY    SetReadOnly
 TABLET_ACTION_SET_RDWR      SetReadWrite
 TABLET_ACTION_CHANGE_TYPE   ChangeType
-TABLET_ACTION_DEMOTE_MASTER DemoteMaster
-TABLET_ACTION_PROMOTE_SLAVE PromoteSlave
-TABLET_ACTION_RESTART_SLAVE RestartSlave
+TABLET_ACTION_DEMOTE_MASTER DemoteMaster        SET GLOBAL read_only=ON; FLUSH TABLES WITH READ LOCK; UNLOCK TABLES
+TABLET_ACTION_PROMOTE_SLAVE PromoteSlave        STOP SLAVE; RESET MASTER; RESET SLAVE; SHOW MASTER STATUS
+TABLET_ACTION_RESTART_SLAVE RestartSlave        STOP SLAVE; RESET SLAVE; CHANGE MASTER TO; wait till Slave_IO_Running & Slave_SQL_Running; SELECT MASTER_POS_WAIT()
 TABLET_ACTION_BREAK_SLAVES  BreakSlaves
 TABLET_ACTION_SCRAP         Scrap
 
@@ -451,10 +459,37 @@ SHARD_ACTION_REPARENT       ReparentShard
 SHARD_ACTION_REBUILD        RebuildShard
 
 KEYSPACE_ACTION_REBUILD     RebuildKeyspace
-=========================== =====
+=========================== =================== =====
+
+action state
+
+- queued
+
+- running
+
+- failed
+
+KeyRange
+--------
+
+::
+
+    SET GLOBAL vt_enable_binlog_splitter_rbr = 1;
+    SET GLOBAL vt_shard_key_range_start = xx;
+    SET GLOBAL vt_shard_key_range_end = yy;
+
 
 WhatIsMissed
 ------------
 
 - query router
 
+- SHARD_ACTION_REPARENT
+
+- binlog reader applier
+
+  CreateReplicaTarget
+
+  CreateReplicaSource
+
+  ConfigureKeyRange
