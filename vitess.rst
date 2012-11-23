@@ -102,9 +102,9 @@ Intro
 
   still very active
 
-- 25572 line of code
+- 36,015 line of code
 
-- 135 files
+- 173 go files
 
 - golang plus python client
 
