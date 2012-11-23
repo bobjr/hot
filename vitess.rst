@@ -9,18 +9,6 @@ youtube's vitess
 .. contents:: Table Of Contents
 .. section-numbering::
 
-
-Features
-
-Implementation
-
-
-what is missed?
-
-query router
-
-
-
 DBMan
 =======
 
@@ -127,6 +115,8 @@ Usage
 RpcClient
 ^^^^^^^^^
 
+go and python currently
+
 ::
 
     => SqlQuery.GetSessionId(dbname)
@@ -210,8 +200,6 @@ mysql
   not able to coordinate many instances of a single logical schema 
 
 - not good at random access table query cache
-
-
 
 ::
 
@@ -464,3 +452,9 @@ SHARD_ACTION_REBUILD        RebuildShard
 
 KEYSPACE_ACTION_REBUILD     RebuildKeyspace
 =========================== =====
+
+WhatIsMissed
+------------
+
+- query router
+
