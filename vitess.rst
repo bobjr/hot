@@ -1,9 +1,9 @@
 ======================
-youtube's vitess/vtocc
+youtube's vitess
 ======================
 
 :Author: Gao Peng <funky.gao@gmail.com>
-:Description: 
+:Description: vitess, the scalable mysql cluster framework explained.
 :Revision: $Id$
 
 .. contents:: Table Of Contents
@@ -11,72 +11,15 @@ youtube's vitess/vtocc
 
 
 Features
-Design
+
 Implementation
 
-Usage
-=====
 
-=> SqlQuery.GetSessionId(dbname)
-<= sessionId
+what is missed?
 
-=> SqlQuery.Begin(sessionId)
-<= transactionId
-
-=> SqlQuery.Commit(sessionId, transactionId)
-<= err
-
-=> SqlQuery.Rollback(sessionId, transactionId)
-<= err
-
-=> SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
-<= result
+query router
 
 
-Test
-====
-
-::
-
-    export VTROOT=/Users/gaopeng/src/code.google.com/p/vitess
-
-    # my.cnf server-id=tablet uid
-    # 1. create dirs and my.cnf on local fs(extra info of vt in my.cnf)
-    # 2. deploy bootstrap mysql db to datadir
-    # 3. startup mysqld  $VTROOT/dist/vt-mysql/bin/mysqld_safe
-    # 4. import _vt_schema.sql
-    mysqlctl -tablet-uid 62344 -port 6700 -mysql-port 3700 init
-
-
-    # <server_id>@<hostname>:<leader_port>:<election_port>:<client_port>
-    # create zoo.cfg and startup zk server
-    zkctl -zk.cfg 1@`hostname`:3801:3802:3803 init
-
-    # just create znode in zk 
-    vtctl -force CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
-
-    # create znode in zk
-    #                path                              hostname  mysqlPort vtPort keyspace      shardId tableType parent
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700      6700   test_keyspace 0       master    ""
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
-
-    # their rpc server
-    vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344
-    vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062044
-
-    # 
-    vtctl RebuildShard /zk/global/vt/keyspaces/test_keyspace/shards/0
-
-    # 
-
-    vtctl Ping /zk/test_nj/vt/tablets/0000062344
-
-
-
-
-
-logical vs physical database
 
 DBMan
 =======
@@ -94,77 +37,60 @@ coordinator?
                                       |                                     |
                               ------------------------                      |
                              |        |               |                     |   
-                          visitman  friendman     userman                   |
+                          visitman  friendman  ...  userman     conf.kproxy |
                              |        |               |                     |
                               ------------------------                      |
                                           |                                 |
-                                          | persistant connection #?        |
                                           V                                 |
                             ------------------------------                  |
-                           |                dbman cluster |<----------------
-                           |                              |
-                           |    dbman   dbman    dbman    | stateless
+                           |           dbman cluster(160) |<----------------
+             shard routing |                              |
+           rd load balance |    -----   -----    -----    |
+                  exec sql |   |dbman| |dbman|  |dbman|   | stateless
+                           |    -----   -----    -----    |
                            |                              |
                            |                 mysql client |
                             ------------------------------
                                         |
                                 pthread | each dbman has 6 persistant conn with each mysql instance
-                    libmysqlclient_r.so | totals 6 * 700 = 4300 tcp conn on each dbman
-                                        |
+                    libmysqlclient_r.so | totals 6 * 700 = 4300 tcp conn per dbman
+                                        V
                                -----------------------------
                               |       |       |             |
                             mysql1  mysql2  mysql...     mysql700
                               |
                          conn pool size = 6 * #dbman = 1000 ?
 
+Routing
+-------
 
-Roles
------
-
-- shard routing
-
-- execute sql query
-
-Routining
----------
+(kind, split_key) => (host, port, user, pass, kind_no)
 
 ::
 
     (kind, split_key)
         |
-        | lookup(kind)
+        | kind_setting.lookup(kind)
         V
-    kind_setting
+    (table_num, no=split_key % table_num)
         |
-        | lookup(kind, no=split_key % table_num)
+        | table_setting.lookup(kind, no)
         V
-    table_setting
+       sid
         |
-        | lookup(sid)
+        | server_setting.lookup(sid, masterOrSlave)
         V
-    server_setting
-        |
-    (host, port, user, pass)
-
-
-Problem
--------
-
-- hard to rebalance
-
-  - can only scale up to 2**N shards
-
-  - need 50% relocate data when N=1
-
-  - has stop-the-world
-
-- key not sorted
+    [(host, port, user, pass), ...]
 
 
 Related Projects
 ================
 
 - gizzard by twitter
+
+- spider storage engine
+
+  http://spiderformysql.com/
 
 - vitess by youtube
 
@@ -197,22 +123,28 @@ Metrics
 
 - 135 files
 
-Installation
-------------
+Usage
+-----
 
-::
+=> SqlQuery.GetSessionId(dbname)
+<= sessionId (randInt64)
 
-        export GOPATH=$HOME
-        mkdir -p $HOME/src/code.google.com/p/vitess
-        hg clone -u weekly https://code.google.com/p/vitess/ $HOME/src/code.google.com
-        cd $HOME/src/code.google.com/p/vitess
-        export MYSQL_CONFIG=/usr/local/mysql/bin/mysql_config
-        export LD_LIBRARY_PATH
-        ./bootstrap.sh
-        source dev.env
+=> SqlQuery.Begin(sessionId)
+<= transactionId (atomicInt64)
 
-        cd go
-        make
+=> SqlQuery.Commit(sessionId, transactionId)
+<= err
+
+=> SqlQuery.Rollback(sessionId, transactionId)
+<= err
+
+=> SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
+<= result
+
+Design
+------
+
+- logical vs physical database
 
 
 Intro
@@ -329,11 +261,11 @@ mysql
                       | RPC with bson/gob/json codec over tranport tcp/http
                       |
             ---------------------------- 
-         v |  Connection handler        |
-         t |----------------------------|
-         o |  QueryCache | SqlParser    |
-         c |----------------------------|
-         c |  Optimizer                 |
+           |  Connection pool           |
+         v |----------------------------|
+         t |  QueryCache | SqlParser    |
+           |----------------------------|
+           |  Optimizer  Replication    |
             ---------------------------- 
                       |
                       |------------------------------------------
@@ -393,18 +325,28 @@ zk
 
 
 
-
-                                zk              
+           -------    put       ----
+          | vtctl | ---------> | zk |            
+           -------    produce   ----
                                  |
-                                 |
-                                  ------------
-                                              |
-                                              | watch action
-                                              |
-                             vttablet ----- agent ------ vtaction ---- actor
-                                |     start       invoke          call
-                                |
-                                |
+                                  --------------
+                                                |
+                                        consume | watch action
+                                                |
+                          ----------------------|-----------------------------------
+         --------        |                      |                                   |
+        | smart  | query |  ----------          V                                   |
+        | client |-------->| vttablet | o----- agent ------ vtaction ---- actor     |
+         --------        |  ----------   start       invoke          call   |       |
+                         |                                                 | ctl    |
+                         |                                                 |        |
+                         |                                              --------    |
+                         |                                             | mysqld |   |
+                         |                                              --------    |
+                         |                                                          |
+                         |                                       per mysql instance |
+                          ----------------------------------------------------------
+                          
 
 
     /zk
@@ -465,14 +407,37 @@ xx
 cmd/vttablet/vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344 -logfile /vt/vt_0000062344/vttablet.log
 
 =============== =========== ==============================
-cmd             rpc server  pkg
+cmd             rpc server  desc
 =============== =========== ==============================
-vtocc           Y           tabletserver.queryctl.go
-vtaction        Y           tabletmanager.actor.go
-vttablet        Y           SqlQuery and TabletManager rpc server
-vtctl           N           tabletmanager.initiator.go  wrangler.
-zkctl           N           启动、关闭zk server
+vtctl           N           global mgmt tool  tabletmanager.initiator.go  wrangler.
+vttablet        Y           SqlQuery/TabletManager/UmgmtService rpc server, action agent watcher
+
+mysqlctl        N           init/start/shutdown/teardown a mysql instance
+zkctl           N           init/start/shutdown/teardown a zookeeper
+vtaction        N           execute actions
 =============== =========== ==============================
+
+
+=========================== =====
+action                      value
+=========================== =====
+TABLET_ACTION_PING          Ping
+TABLET_ACTION_SLEEP         Sleep
+TABLET_ACTION_SET_RDONLY    SetReadOnly
+TABLET_ACTION_SET_RDWR      SetReadWrite
+TABLET_ACTION_CHANGE_TYPE   ChangeType
+TABLET_ACTION_DEMOTE_MASTER DemoteMaster
+TABLET_ACTION_PROMOTE_SLAVE PromoteSlave
+TABLET_ACTION_RESTART_SLAVE RestartSlave
+TABLET_ACTION_BREAK_SLAVES  BreakSlaves
+TABLET_ACTION_SCRAP         Scrap
+
+SHARD_ACTION_REPARENT       ReparentShard
+SHARD_ACTION_REBUILD        RebuildShard
+
+KEYSPACE_ACTION_REBUILD     RebuildKeyspace
+=========================== =====
+
 
 Tablet
 ------
