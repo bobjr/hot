@@ -493,3 +493,21 @@ WhatIsMissed
   CreateReplicaSource
 
   ConfigureKeyRange
+
+
+Implementation
+==============
+
+Routing
+-------
+
+
+Client
+------
+
+Reshard
+-------
+
+
+Replication
+-----------
