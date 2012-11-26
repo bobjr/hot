@@ -23,7 +23,7 @@ Installation
         hg clone -u weekly https://code.google.com/p/vitess/ $HOME/src/code.google.com
         cd $HOME/src/code.google.com/p/vitess
         export MYSQL_CONFIG=/usr/local/mysql/bin/mysql_config
-        export LD_LIBRARY_PATH
+        export DYLD_LIBRARY_PATH
         ./bootstrap.sh
         source dev.env
 
