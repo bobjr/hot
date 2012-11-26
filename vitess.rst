@@ -275,6 +275,22 @@ ServerCluster
 Architecture
 ------------
 
+::
+
+                vtctl   client
+                  |        |
+                   --------
+                     |
+                     |------ zkocc ------------ ZooKeeper
+                     |                              |
+            ------------------------------------------------
+           |           |            |           |           |
+           |           |            |           |           |
+        vttablet    vttablet    vttablet    vttablet    vttablet
+        --------    --------    --------    --------    --------
+        mysqld      mysqld      mysqld      mysqld      mysqld
+
+
 TabletType
 ^^^^^^^^^^
  
@@ -447,7 +463,7 @@ TABLET_ACTION_SLEEP         Sleep
 TABLET_ACTION_SET_RDONLY    SetReadOnly
 TABLET_ACTION_SET_RDWR      SetReadWrite
 TABLET_ACTION_CHANGE_TYPE   ChangeType
-TABLET_ACTION_DEMOTE_MASTER DemoteMaster        SET GLOBAL read_only=ON; FLUSH TABLES WITH READ LOCK; UNLOCK TABLES
+TABLET_ACTION_DEMOTE_MASTER DemoteMaster        SET GLOBAL read_only=ON; FLUSH TABLES WITH READ LOCK; UNLOCK TABLES; SHOW MASTER STATUS; set tablet readonly
 TABLET_ACTION_PROMOTE_SLAVE PromoteSlave        STOP SLAVE; RESET MASTER; RESET SLAVE; SHOW MASTER STATUS
 TABLET_ACTION_RESTART_SLAVE RestartSlave        STOP SLAVE; RESET SLAVE; CHANGE MASTER TO; wait till Slave_IO_Running & Slave_SQL_Running; SELECT MASTER_POS_WAIT()
 TABLET_ACTION_BREAK_SLAVES  BreakSlaves
