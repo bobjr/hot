@@ -435,10 +435,12 @@ Znodes
                     |- <keyspace>
                             |
                             |- actionlog
-                            |
-                            |- action
                             |    |
-                            |    |- SEQUENCE => json(ActionNode)
+                            |    |- SEQUENCE => json(actionResponse)  --
+                            |                                           |
+                            |- action                                   | 1:1
+                            |    |                                      |
+                            |    |- SEQUENCE => json(ActionNode) ------- 
                             |
                             |
                             |- shards
@@ -451,30 +453,6 @@ Znodes
 
 
 
-action
-------
-
-
-=========================== =================== =====
-action                      value               exec
-=========================== =================== =====
-TABLET_ACTION_PING          Ping                
-TABLET_ACTION_SLEEP         Sleep
-TABLET_ACTION_SET_RDONLY    SetReadOnly
-TABLET_ACTION_SET_RDWR      SetReadWrite
-TABLET_ACTION_CHANGE_TYPE   ChangeType
-TABLET_ACTION_DEMOTE_MASTER DemoteMaster        SET GLOBAL read_only=ON; FLUSH TABLES WITH READ LOCK; UNLOCK TABLES; SHOW MASTER STATUS; set tablet readonly
-TABLET_ACTION_PROMOTE_SLAVE PromoteSlave        STOP SLAVE; RESET MASTER; RESET SLAVE; SHOW MASTER STATUS
-TABLET_ACTION_RESTART_SLAVE RestartSlave        STOP SLAVE; RESET SLAVE; CHANGE MASTER TO; wait till Slave_IO_Running & Slave_SQL_Running; SELECT MASTER_POS_WAIT()
-TABLET_ACTION_BREAK_SLAVES  BreakSlaves
-TABLET_ACTION_SCRAP         Scrap
-
-SHARD_ACTION_REPARENT       ReparentShard
-SHARD_ACTION_REBUILD        RebuildShard
-
-KEYSPACE_ACTION_REBUILD     RebuildKeyspace
-=========================== =================== =====
-
 KeyRange
 --------
 
@@ -483,22 +461,6 @@ KeyRange
     SET GLOBAL vt_enable_binlog_splitter_rbr = 1;
     SET GLOBAL vt_shard_key_range_start = xx;
     SET GLOBAL vt_shard_key_range_end = yy;
-
-
-WhatIsMissed
-------------
-
-- query router
-
-- SHARD_ACTION_REPARENT
-
-- binlog reader applier
-
-  CreateReplicaTarget
-
-  CreateReplicaSource
-
-  ConfigureKeyRange
 
 
 Implementation
@@ -634,6 +596,54 @@ DDL
         qe.schemaInfo.CreateTable(ddlPlan.NewName)
     }
 
+Replace Master M with X
+-----------------------
+
+::
+
+    c = vtctl.connect(M)
+    c.exec('SET GLOBAL READ_ONLY=1; FLUSH TABLES WITH READ LOCK; UNLOCK TABLES;')
+
+    slaves = []
+    for slave in M.slaves():
+        slaveConn = connect(slave)
+        relay_master_log_file, exec_master_log_pos = slaveConn.slaveStatus()
+        slaves.append(slave)
+
+    X = slaves.choose_one()
+    xConn = connect(X)
+    xConn.exec('STOP SLAVE; RESET MASTER; RESET SLAVE; SELECT MASTER_POS_WAIT();')
+
+    for slave in [s in slaves if s != X]:
+        c = connect(slave)
+        c.exec('STOP SLAVE; RESET SLAVE; CHANGE MASTER TO X; START SLAVE; SELECT MASTER_POS_WAIT();')
+
+    xConn.exec('SET GLOBAL READ_ONLY=0')
+
+
+OnlineChangeSchema
+------------------
+
+wrangler.ApplySchemaShard
+
+::
+
+    master
+
+    SET sql_log_bin = 0
+    create database _vt_preflight
+    use _vt_preflight
+
+    beforeSchema = mysqld.GetSchema(dbname)
+    replay beforeSchema on _vt_preflight
+
+    apply 'alter table xx' to _vt_preflight
+
+    check all tablets have the same schema as the master's, else won't proceed
+
+
+
+        
 
 Replication
 -----------
