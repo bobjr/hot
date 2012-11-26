@@ -12,46 +12,6 @@ youtube's vitess
 DBMan
 =======
 
-Topology
---------
-
-coordinator?
-
-dbman groupd and only conn pooled with limited mysql instances?
-
-::
-
-                                     php
-                                      |
-                           LCache - kproxy ---------------------------------
-                                      |                                     |
-                              ------------------------                      |
-                             |        |               |                     |   
-                          visitman  friendman  ...  userman     conf.kproxy |
-                             |        |               |                     |
-                              ------------------------                      |
-                                          |                                 |
-                                          V                                 |
-                            ------------------------------                  |
-                           |           dbman cluster(160) |<----------------
-             shard routing |                              |
-           rd load balance |    -----   -----    -----    |
-                  exec sql |   |dbman| |dbman|  |dbman|   | stateless
-                           |    -----   -----    -----    |
-                           |                              |
-                           |                 mysql client |
-                            ------------------------------
-                                        |
-                                pthread | 6 persistant conn to each mysql instance per dbman
-                    libmysqlclient_r.so | totals 6 * 700 = 4300
-                                        |
-                                        V internal replication
-                               ---------------------------------
-                              |       |       |      |          |
-                            mysql1  mysql2  mysql3  ...     mysql700
-                              |
-                         conn pool size = 6 * #dbman = 1000 ?
-
 Routing
 -------
 
@@ -74,12 +34,64 @@ Routing
     [(host, port, user, pass), ...]
 
 
+Topology
+--------
+
+::
+
+                                     php
+                                      |
+                           LCache - kproxy ---------------------------------
+                                      |                                     |
+                              ------------------------                      |
+                             |        |               |                     |   
+                          visitman  friendman  ...  userman     conf.kproxy |
+                             |        |               |                     |
+                              ------------------------                      |
+                                          |                                 |
+                                          V                                 |
+                            ------------------------------                  |
+                           |           dbman cluster(160) |<----------------
+             shard routing |                              |
+           rd load balance |    -----   -----    -----    |
+                  exec sql |   |dbman| |dbman|  |dbman|   | stateless
+                           |    -----   -----    -----    |
+                           |      |       |        |      |
+                           |      |       |        |      |
+                            ------------------------------
+                                        |
+                                pthread | 6 persistant conn to each mysql instance per dbman
+                    libmysqlclient_r.so | totals 6 * 700 = 4300
+                                        |
+                                        V internal replication
+                               ---------------------------------
+                              |       |       |      |          |
+                            mysql1  mysql2  mysql3  ...     mysql700
+                              |
+                         conn pool size = 6 * #dbman = 1000 ?
+
+
+coordinator?
+
+dbman groupd and only conn pooled with limited mysql instances?
+
+
 Related Projects
 ================
 
 - gizzard by twitter
 
   https://github.com/twitter/gizzard
+
+  - datasource
+
+    redis, mysql, lucene, etc
+
+  -  all write operations must be idempotent
+
+    does not guarantee that write operations are applied in order
+
+  .. image:: https://github.com/twitter/gizzard/raw/master/doc/middleware.png?raw=true
 
 - spider storage engine
 
@@ -110,53 +122,6 @@ Intro
 
 - golang plus python client
 
-
-Usage
------
-
-RpcClient
-^^^^^^^^^
-
-go and python currently
-
-::
-
-    => SqlQuery.GetSessionId(dbname)
-    <= sessionId (randInt64)
-    
-    => SqlQuery.Begin(sessionId)
-    <= transactionId (atomicInt64)
-    
-    => SqlQuery.Commit(sessionId, transactionId)
-    <= err
-    
-    => SqlQuery.Rollback(sessionId, transactionId)
-    <= err
-    
-    => SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
-    <= result
-
-
-Cluster
-^^^^^^^
-
-::
-
-    vtctl CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
-
-    #init_tablet(tablet_type, keyspace, shard, zk_parent_alias, key_start, key_end)
-
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700 6700 test_keyspace 0 master ""
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
-    vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
-
-    vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344
-    vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062044
-    vttablet -port 6702 -tablet-path /zk/test_nj/vt/tablets/0000041983
-
-    vtctl Ping /zk/test_nj/vt/tablets/0000062344
-    vtctl RebuildShardGraph /zk/global/vt/keyspaces/test_keyspace/shards/0000000000000000-8000000000000000
-
 Features
 --------
 
@@ -167,8 +132,6 @@ Features
   - external replication
 
   - range based sharding
-
-    auto_increment will not work, split key should be distributed randomly
 
   - auto split a shard into 2 when it is hot
 
@@ -190,12 +153,10 @@ Features
 
 - fail-safe
 
+Why
+^^^
 
-Assumption
-----------
-
-mysql
-^^^^^
+mysql:
 
 - good at storage
 
@@ -206,46 +167,6 @@ mysql
 - not good at random access table query cache
 
 ::
-
-    On file system:
-
-        vt
-         |
-         |- zk_global_<uid>
-         |
-         |- zk_<uid>
-         |    |
-         |    |- logs
-         |    |- zoo.cfg
-         |    |- zk.pid
-         |    |- myid
-         |
-         |- vt_<uid>
-              |
-              |- data/
-              |
-              |- bin-logs
-              |     |
-              |     |- vt-<uid>-bin.index
-              |
-              |- relay-logs
-              |     |
-              |     |- relay.info
-              |     |- vt-<uid>-relay-bin.index
-              |
-              |- slow-query.log
-              |- error.log
-              |- master.info
-              |
-              |- mysql.pid
-              |- my.cnf
-              |- mysql.sock
-              |- innodb
-                    |
-                    |- data
-                    |- log
-
-
 
                     client
                       |
@@ -272,26 +193,198 @@ mysql
             ---------------------------- 
 
 
+On file system:
+
+::
+
+
+        /vt
+         |
+         |- vt_<uid>
+              |
+              ├── bin-logs
+              │   ├── vt-0000009460-bin.000001
+              │   └── vt-0000009460-bin.index
+              ├── data
+              │   ├── _vt
+              │   │   ├── db.opt
+              │   │   ├── reparent_log.frm
+              │   │   ├── reparent_log.ibd
+              │   │   ├── replication_log.frm
+              │   │   └── replication_log.ibd
+              │   ├── mysql
+              │   │   ├── columns_priv.MYD
+              │   │   ├── columns_priv.MYI
+              │   │   ├── columns_priv.frm
+              │   │   ├── db.MYD
+              │   │   ├── db.MYI
+              │   │   ├── db.frm
+              │   │   ├── event.MYD
+              │   │   ├── event.MYI
+              │   │   ├── event.frm
+              │   │   ├── func.MYD
+              │   │   ├── func.MYI
+              │   │   ├── func.frm
+              │   │   ├── general_log.CSM
+              │   │   ├── general_log.CSV
+              │   │   ├── general_log.frm
+              │   │   ├── help_category.MYD
+              │   │   ├── help_category.MYI
+              │   │   ├── help_category.frm
+              │   │   ├── help_keyword.MYD
+              │   │   ├── help_keyword.MYI
+              │   │   ├── help_keyword.frm
+              │   │   ├── help_relation.MYD
+              │   │   ├── help_relation.MYI
+              │   │   ├── help_relation.frm
+              │   │   ├── help_topic.MYD
+              │   │   ├── help_topic.MYI
+              │   │   ├── help_topic.frm
+              │   │   ├── host.MYD
+              │   │   ├── host.MYI
+              │   │   ├── host.frm
+              │   │   ├── ndb_binlog_index.MYD
+              │   │   ├── ndb_binlog_index.MYI
+              │   │   ├── ndb_binlog_index.frm
+              │   │   ├── plugin.MYD
+              │   │   ├── plugin.MYI
+              │   │   ├── plugin.frm
+              │   │   ├── proc.MYD
+              │   │   ├── proc.MYI
+              │   │   ├── proc.frm
+              │   │   ├── procs_priv.MYD
+              │   │   ├── procs_priv.MYI
+              │   │   ├── procs_priv.frm
+              │   │   ├── servers.MYD
+              │   │   ├── servers.MYI
+              │   │   ├── servers.frm
+              │   │   ├── slow_log.CSM
+              │   │   ├── slow_log.CSV
+              │   │   ├── slow_log.frm
+              │   │   ├── tables_priv.MYD
+              │   │   ├── tables_priv.MYI
+              │   │   ├── tables_priv.frm
+              │   │   ├── time_zone.MYD
+              │   │   ├── time_zone.MYI
+              │   │   ├── time_zone.frm
+              │   │   ├── time_zone_leap_second.MYD
+              │   │   ├── time_zone_leap_second.MYI
+              │   │   ├── time_zone_leap_second.frm
+              │   │   ├── time_zone_name.MYD
+              │   │   ├── time_zone_name.MYI
+              │   │   ├── time_zone_name.frm
+              │   │   ├── time_zone_transition.MYD
+              │   │   ├── time_zone_transition.MYI
+              │   │   ├── time_zone_transition.frm
+              │   │   ├── time_zone_transition_type.MYD
+              │   │   ├── time_zone_transition_type.MYI
+              │   │   ├── time_zone_transition_type.frm
+              │   │   ├── user.MYD
+              │   │   ├── user.MYI
+              │   │   └── user.frm
+              │   └── vt_test
+              │       ├── db.opt
+              │       ├── vtocc_a.frm
+              │       ├── vtocc_a.ibd
+              │       ├── vtocc_b.frm
+              │       ├── vtocc_b.ibd
+              │       ├── vtocc_big.frm
+              │       ├── vtocc_big.ibd
+              │       ├── vtocc_c.frm
+              │       ├── vtocc_c.ibd
+              │       ├── vtocc_cached.frm
+              │       ├── vtocc_cached.ibd
+              │       ├── vtocc_d.frm
+              │       ├── vtocc_d.ibd
+              │       ├── vtocc_e.frm
+              │       ├── vtocc_e.ibd
+              │       ├── vtocc_f.frm
+              │       ├── vtocc_f.ibd
+              │       ├── vtocc_fracts.frm
+              │       ├── vtocc_fracts.ibd
+              │       ├── vtocc_ints.frm
+              │       ├── vtocc_ints.ibd
+              │       ├── vtocc_misc.frm
+              │       ├── vtocc_misc.ibd
+              │       ├── vtocc_strings.frm
+              │       ├── vtocc_strings.ibd
+              │       ├── vtocc_test.frm
+              │       └── vtocc_test.ibd
+              ├── dbconf.json
+              ├── error.log
+              ├── innodb
+              │   ├── data
+              │   │   └── ibdata1
+              │   └── log
+              │       ├── ib_logfile0
+              │       └── ib_logfile1
+              ├── memcache.sock
+              ├── my.cnf
+              ├── mysql.pid
+              ├── mysql.sock
+              ├── relay-logs
+              ├── slow-query.log
+              └── tmp
+
+
+Usage
+-----
+
 Components
-----------
+^^^^^^^^^^
 
 =============== =========== ==============================
 cmd             rpc server  desc
 =============== =========== ==============================
-vtctl           N           global mgmt tool  tabletmanager.initiator.go  wrangler.
+vtctl           N           global mgmt & deployment tool
 vttablet        Y           SqlQuery/TabletManager/UmgmtService rpc server, action agent watcher
-
-mysqlctl        N           init/start/shutdown/teardown a mysql instance
-zkctl           N           init/start/shutdown/teardown a zookeeper
-vtaction        N           execute actions
+vtaction        N           actions initiator
 =============== =========== ==============================
 
-vttablet startup
+ClientRpc
+^^^^^^^^^
+
+go and python currently, easy to migrate to php, ruby, etc.
 
 ::
 
-    select table_name, table_type, unix_timestamp(create_time), table_comment from information_schema.tables where table_schema = database()
+    => SqlQuery.GetSessionId(dbname)
+    <= sessionId (randInt64)
+    
+    => SqlQuery.Begin(sessionId)
+    <= transactionId (atomicInt64)
+    
+    => SqlQuery.Commit(sessionId, transactionId)
+    <= err
+    
+    => SqlQuery.Rollback(sessionId, transactionId)
+    <= err
+    
+    => SqlQuery.Execute(sql, bindVars, sessionId, transactionId)
+    <= result
 
+    Execute("select uid, name from s_user_info where uid>:uid", 45)
+
+
+ServerCluster
+^^^^^^^^^^^^^
+
+::
+
+    vtctl CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
+
+    #init_tablet(tablet_type, keyspace, shard, zk_parent_alias, key_start, key_end)
+
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700 6700 test_keyspace 0 master ""
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
+    vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
+
+    vttablet -port 6700 -tablet-path /zk/test_nj/vt/tablets/0000062344
+    vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062044
+    vttablet -port 6702 -tablet-path /zk/test_nj/vt/tablets/0000041983
+
+    vtctl Ping /zk/test_nj/vt/tablets/0000062344
+    vtctl RebuildShardGraph /zk/global/vt/keyspaces/test_keyspace/shards/0000000000000000-8000000000000000
 
 
 Architecture
@@ -618,6 +711,10 @@ ExecPlan
 
 explain
 
+plan => query LRUCache
+
+reloadSchema ticker
+
 get index
 
 ticker
@@ -627,6 +724,16 @@ ticker
     show index from table_name
 
 getScore Cardinality
+
+DDL
+^^^
+
+::
+
+    after exec ddl, schemaInfo.DropTable(ddlPlan.TableName)
+    if ddlPlan.Action != sqlparser.DROP { // CREATE, ALTER, RENAME
+        qe.schemaInfo.CreateTable(ddlPlan.NewName)
+    }
 
 
 Replication
