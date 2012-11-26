@@ -17,6 +17,8 @@ Topology
 
 coordinator?
 
+dbman groupd and only conn pooled with limited mysql instances?
+
 ::
 
                                      php
@@ -142,6 +144,8 @@ Cluster
 
     vtctl CreateKeyspace /zk/global/vt/keyspaces/test_keyspace
 
+    #init_tablet(tablet_type, keyspace, shard, zk_parent_alias, key_start, key_end)
+
     vtctl InitTablet /zk/test_nj/vt/tablets/0000062344 localhost 3700 6700 test_keyspace 0 master ""
     vtctl InitTablet /zk/test_nj/vt/tablets/0000062044 localhost 3701 6701 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
     vtctl InitTablet /zk/test_nj/vt/tablets/0000041983 localhost 3702 6702 test_keyspace 0 replica /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-62344
@@ -151,7 +155,7 @@ Cluster
     vttablet -port 6702 -tablet-path /zk/test_nj/vt/tablets/0000041983
 
     vtctl Ping /zk/test_nj/vt/tablets/0000062344
-    vtctl RebuildShard /zk/global/vt/keyspaces/test_keyspace/shards/0
+    vtctl RebuildShardGraph /zk/global/vt/keyspaces/test_keyspace/shards/0000000000000000-8000000000000000
 
 Features
 --------
@@ -391,6 +395,14 @@ Znodes
      |     |
      |     |- vt
      |        |
+     |        |--- ns
+     |        |     | 
+     |        |     |- <keyspace> => json(SrvKeyspace{[]SrvShard{KeyRange, map[string]VtnsAddrs, readOnly}, TabletTypes []string})
+     |        |             |
+     |        |             |- <shard id>
+     |        |                  |
+     |        |                  |- <db type> => json(VtnsAddrs{uid, host, port})
+     |        |   
      |        |- tablets
      |              |
      |              |---- <uid> => json(Tablet)
@@ -412,7 +424,7 @@ Znodes
      |                      |- <shard id>
      |                           |
      |                           |- <db type> => json(VtnsAddrs)
-     |            
+     |     
      |            
      |- global
            |
@@ -421,6 +433,8 @@ Znodes
               |- keyspaces
                     |
                     |- <keyspace>
+                            |
+                            |- actionlog
                             |
                             |- action
                             |    |
@@ -498,8 +512,99 @@ WhatIsMissed
 Implementation
 ==============
 
+vttablet
+--------
+
+::
+
+        read my.cnf
+            |
+        connect to zk
+            |
+        start action agent
+            |   |
+            |   |- what if tablet type changed?
+            |   |- read tablet info from zk
+            |   |- create pid znode(EPHEMERAL)
+            |   |           |
+            |   |           |- if exists, delete beforehead
+            |   |           |- watch this znode: if delete, stop watch
+            |   |
+            |   |- actionEventLoop
+            |
+        start tablet manager rpc server
+            |   |
+            |   |- SlavePosition
+            |   |- WaitSlavePosition
+            |   |- MasterPosition
+            |   |- StopSlave
+            |   |- GetSlaves
+            |
+        start sql query rpc server
+            |   |
+            |   |- GetSessionId
+            |   |- Begin
+            |   |- Execute
+            |   |- Commit/Rollback
+            |
+            |
+
+
+vtctl
+-----
+
+::
+
+        conn to zk
+        create Wrangler
+
+health check master db
+
+SmartClient
+-----------
+
+sql driver
+^^^^^^^^^^
+
+- vttablet
+
+  vttp://hostname:port/dbname
+
+- vtdb
+
+  vtzk://host:port/zkpath/dbType
+
+  vtdb-zkocc
+
+::
+
+        in charge of a keyspace
+
+        read zk /zk/local/vt/ns/<keyspace>
+
+        get all shards info naming.SrvKeyspace
+
+
+
 Routing
--------
+^^^^^^^
+
+::
+
+    client.Open('vtzk://host:port/zk/local/vt/ns/<keyspace>/<dbType>')
+                                 --------------------------
+    client.Begin()
+    client.Execute('select * from s_user_info where uid>:uid', 123)
+
+    read /zk/local/vt/ns/<keyspace>/<dbType>
+        |
+    get all related tablet server, each has a KeyRange
+        |
+    parse sql by bind vals
+        |
+    for each target tabletserver, connect and rpc call SqlQuery.Execute(sql)
+        |
+    final result
 
 
 Client
@@ -508,6 +613,30 @@ Client
 Reshard
 -------
 
+ExecPlan
+--------
+
+explain
+
+get index
+
+ticker
+
+    select table_name, table_type, unix_timestamp(create_time), table_comment from information_schema.tables where table_schema = database()
+
+    show index from table_name
+
+getScore Cardinality
+
 
 Replication
 -----------
+
+LogicalDb
+---------
+
+
+Bottleneck
+----------
+
+zkocc
