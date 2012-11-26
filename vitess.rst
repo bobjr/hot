@@ -173,6 +173,8 @@ mysql:
                       | RPC with bson/gob/json codec over tranport tcp/http
                       |
             ---------------------------- 
+           |  RPC Services              |
+         v |----------------------------|
            |  Connection pool           |
          v |----------------------------|
          t |  QueryCache | SqlParser    |
@@ -191,140 +193,6 @@ mysql:
          l |----------------------------|
            |  StorageEngines            |
             ---------------------------- 
-
-
-On file system:
-
-::
-
-
-        /vt
-         |
-         |- vt_<uid>
-              |
-              ├── bin-logs
-              │   ├── vt-0000009460-bin.000001
-              │   └── vt-0000009460-bin.index
-              ├── data
-              │   ├── _vt
-              │   │   ├── db.opt
-              │   │   ├── reparent_log.frm
-              │   │   ├── reparent_log.ibd
-              │   │   ├── replication_log.frm
-              │   │   └── replication_log.ibd
-              │   ├── mysql
-              │   │   ├── columns_priv.MYD
-              │   │   ├── columns_priv.MYI
-              │   │   ├── columns_priv.frm
-              │   │   ├── db.MYD
-              │   │   ├── db.MYI
-              │   │   ├── db.frm
-              │   │   ├── event.MYD
-              │   │   ├── event.MYI
-              │   │   ├── event.frm
-              │   │   ├── func.MYD
-              │   │   ├── func.MYI
-              │   │   ├── func.frm
-              │   │   ├── general_log.CSM
-              │   │   ├── general_log.CSV
-              │   │   ├── general_log.frm
-              │   │   ├── help_category.MYD
-              │   │   ├── help_category.MYI
-              │   │   ├── help_category.frm
-              │   │   ├── help_keyword.MYD
-              │   │   ├── help_keyword.MYI
-              │   │   ├── help_keyword.frm
-              │   │   ├── help_relation.MYD
-              │   │   ├── help_relation.MYI
-              │   │   ├── help_relation.frm
-              │   │   ├── help_topic.MYD
-              │   │   ├── help_topic.MYI
-              │   │   ├── help_topic.frm
-              │   │   ├── host.MYD
-              │   │   ├── host.MYI
-              │   │   ├── host.frm
-              │   │   ├── ndb_binlog_index.MYD
-              │   │   ├── ndb_binlog_index.MYI
-              │   │   ├── ndb_binlog_index.frm
-              │   │   ├── plugin.MYD
-              │   │   ├── plugin.MYI
-              │   │   ├── plugin.frm
-              │   │   ├── proc.MYD
-              │   │   ├── proc.MYI
-              │   │   ├── proc.frm
-              │   │   ├── procs_priv.MYD
-              │   │   ├── procs_priv.MYI
-              │   │   ├── procs_priv.frm
-              │   │   ├── servers.MYD
-              │   │   ├── servers.MYI
-              │   │   ├── servers.frm
-              │   │   ├── slow_log.CSM
-              │   │   ├── slow_log.CSV
-              │   │   ├── slow_log.frm
-              │   │   ├── tables_priv.MYD
-              │   │   ├── tables_priv.MYI
-              │   │   ├── tables_priv.frm
-              │   │   ├── time_zone.MYD
-              │   │   ├── time_zone.MYI
-              │   │   ├── time_zone.frm
-              │   │   ├── time_zone_leap_second.MYD
-              │   │   ├── time_zone_leap_second.MYI
-              │   │   ├── time_zone_leap_second.frm
-              │   │   ├── time_zone_name.MYD
-              │   │   ├── time_zone_name.MYI
-              │   │   ├── time_zone_name.frm
-              │   │   ├── time_zone_transition.MYD
-              │   │   ├── time_zone_transition.MYI
-              │   │   ├── time_zone_transition.frm
-              │   │   ├── time_zone_transition_type.MYD
-              │   │   ├── time_zone_transition_type.MYI
-              │   │   ├── time_zone_transition_type.frm
-              │   │   ├── user.MYD
-              │   │   ├── user.MYI
-              │   │   └── user.frm
-              │   └── vt_test
-              │       ├── db.opt
-              │       ├── vtocc_a.frm
-              │       ├── vtocc_a.ibd
-              │       ├── vtocc_b.frm
-              │       ├── vtocc_b.ibd
-              │       ├── vtocc_big.frm
-              │       ├── vtocc_big.ibd
-              │       ├── vtocc_c.frm
-              │       ├── vtocc_c.ibd
-              │       ├── vtocc_cached.frm
-              │       ├── vtocc_cached.ibd
-              │       ├── vtocc_d.frm
-              │       ├── vtocc_d.ibd
-              │       ├── vtocc_e.frm
-              │       ├── vtocc_e.ibd
-              │       ├── vtocc_f.frm
-              │       ├── vtocc_f.ibd
-              │       ├── vtocc_fracts.frm
-              │       ├── vtocc_fracts.ibd
-              │       ├── vtocc_ints.frm
-              │       ├── vtocc_ints.ibd
-              │       ├── vtocc_misc.frm
-              │       ├── vtocc_misc.ibd
-              │       ├── vtocc_strings.frm
-              │       ├── vtocc_strings.ibd
-              │       ├── vtocc_test.frm
-              │       └── vtocc_test.ibd
-              ├── dbconf.json
-              ├── error.log
-              ├── innodb
-              │   ├── data
-              │   │   └── ibdata1
-              │   └── log
-              │       ├── ib_logfile0
-              │       └── ib_logfile1
-              ├── memcache.sock
-              ├── my.cnf
-              ├── mysql.pid
-              ├── mysql.sock
-              ├── relay-logs
-              ├── slow-query.log
-              └── tmp
 
 
 Usage
@@ -386,6 +254,23 @@ ServerCluster
     vtctl Ping /zk/test_nj/vt/tablets/0000062344
     vtctl RebuildShardGraph /zk/global/vt/keyspaces/test_keyspace/shards/0000000000000000-8000000000000000
 
+    UpdateTablet
+    SetReadOnly
+    SetReadWrite
+    DemoteMaster
+    ChangeSlaveType
+    Snapshot
+    ReparentTablet
+
+    ReparentShard
+    ListShardTablets
+    ListShardActions
+
+
+    ApplySchema
+    PreflightSchema
+
+
 
 Architecture
 ------------
@@ -433,15 +318,21 @@ DataFlow
 
 ::
 
-           -------    put       ----
-          | vtctl | ---------> | zk |            
-           -------    produce   ----
+                               -------
+                              | vtctl |
+                               -------
                                  |
-                                  --------------
-                                                |
-                                        consume | watch action
-                                                |
-                          ----------------------|-----------------------------------
+                         produce | put
+                                 V
+                                ----
+             ----------------> | zk |            
+            |                   ----
+            |                    |
+            | router              --------------
+            |                                   |
+            |                           consume | watch action
+            |                                   |
+            |             ----------------------|-----------------------------------
          --------        |                      |                                   |
         | smart  | query |  ----------          V                                   |
         | client |-------->| vttablet | o----- agent ------ vtaction ---- actor     |
@@ -567,14 +458,6 @@ SHARD_ACTION_REBUILD        RebuildShard
 
 KEYSPACE_ACTION_REBUILD     RebuildKeyspace
 =========================== =================== =====
-
-action state
-
-- queued
-
-- running
-
-- failed
 
 KeyRange
 --------
