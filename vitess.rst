@@ -45,7 +45,7 @@ Topology
                                       |                                     |
                               ------------------------                      |
                              |        |               |                     |   
-                          visitman  friendman  ...  userman     conf.kproxy |
+                          visitman  friendman  ...  userman     list.kproxy |
                              |        |               |                     |
                               ------------------------                      |
                                           |                                 |
@@ -676,3 +676,10 @@ Bottleneck
 ----------
 
 zkocc
+
+
+
+TODO
+====
+
+ZkPathToZkAddr
