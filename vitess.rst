@@ -25,6 +25,13 @@ Abstraction
   属于某个tablet
 
 
+::
+
+
+        keyspace
+          shard
+            tablet
+
 tabletReplicationPath = /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344
 
 mysqlctl
@@ -326,6 +333,14 @@ ApplySchemaShard
 
             if tablet.IsServingType() {
                 change type to TYPE_SCHEMA_UPGRADE
+            }
+
+            apply schema to this slave {
+                ExecuteMysqlCommand(ddl)
+            }
+
+            if tablet.IsServingType() {
+                change type back to beforeType
             }
         }
 
