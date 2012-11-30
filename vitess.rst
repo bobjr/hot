@@ -14,12 +14,18 @@ Abstraction
 
 - keyspace
 
+  default tablet db name = vtDbPrefix('vt_') + tablet.Keyspace
+
 - shard
 
   一个shard内只有1个 masterTablet
 
 - cell
 
+  属于某个tablet
+
+
+tabletReplicationPath = /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344
 
 mysqlctl
 ========
@@ -272,18 +278,63 @@ vtctl ReparentShard /zk/global/vt/keyspaces/test_keyspace/shards/0 /zk/test_nj/v
         }
     }
 
+    if most(slaves).restartSuccess {
+        enable write for electMasterTablet
+    }
 
-
-
-
-
-
+    rebuild shard graph
 
     unlock
 
 
+ApplySchemaShard
+----------------
+
+-sql='create table xxx' /zk/global/vt/keyspaces/test_keyspace/shards/0
+
+::
+
+    on master of this shard {
+        PreflightSchema(ddl) {
+            get current schemas of all tables in this db
+
+            SET sql_log_bin = 0; { // session based
+                DROP DATABASE IF EXISTS _vt_preflight;
+                CREATE DATABASE _vt_preflight;
+                USE _vt_preflight;
+
+                replay current schemas on db(_vt_preflight);
+                apply the ddl on db(_vt_preflight);
+
+                get schemas of db(_vt_preflight)
+
+                now, we have the (beforeSchema, afterSchema)
+
+                DROP DATABASE _vt_preflight;  
+            }
+        }
+    }
+
+    lockAndApplySchemaShard {
+        lock shard
+
+        FindAllSlaveTabletAliasesInShard
+        foreach slave {
+            get current schemas
+
+            compare current schemas with preflight schemas, return if all the same
+
+            if tablet.IsServingType() {
+                change type to TYPE_SCHEMA_UPGRADE
+            }
+        }
 
 
+        unlock shard
+    }
+
+
+    
 
 vttablet
 ========
