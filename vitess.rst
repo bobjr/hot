@@ -9,6 +9,22 @@ youtube's vitess
 .. contents:: Table Of Contents
 .. section-numbering::
 
+Features
+========
+
+- Bind variables for queries, backed by a query cache
+  
+  To avoid repeated parsing and enable efficient reuse of query plans.
+
+- Transaction management
+
+- DML annotation
+  
+  Every DML is rewritten to include a comment field at the end of a query identifying the primary key of the rows it changed.
+
+- 
+
+
 Abstraction
 ===========
 
