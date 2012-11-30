@@ -22,7 +22,23 @@ Features
   
   Every DML is rewritten to include a comment field at the end of a query identifying the primary key of the rows it changed.
 
-- 
+- Update stream
+
+  - pk change notifications
+
+  - derived from binlog
+
+  - eventual consistency
+
+    out of order
+
+- roles
+
+- DDL
+
+  Many DDLs cannot be performed on high traffic live systems due to their locking requirements. 
+  
+  Vitess will allow you to coordinate such rollout with un-noticeable downtime by deploying the DDL to offline replicas and a reparenting process
 
 
 Abstraction
@@ -31,6 +47,8 @@ Abstraction
 - keyspace
 
   default tablet db name = vtDbPrefix('vt_') + tablet.Keyspace
+
+  All tables that are indexed by a set of keys are known as a keyspace, which basically represents the logical database that combines all the shards that store them.
 
 - shard
 
