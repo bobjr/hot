@@ -31,6 +31,16 @@ Installation
         make
 
 
+users
+-----
+
+- vt_app
+
+- vt_dba
+
+- vt_repl
+
+
 Run
 ---
 

@@ -16,6 +16,8 @@ Abstraction
 
 - shard
 
+  一个shard内只有1个 masterTablet
+
 - cell
 
 
@@ -177,7 +179,7 @@ RebuildShardGraph
 
 
 RebuildKeyspaceGraph
------------------
+--------------------
 
 /zk/global/vt/keyspaces/test_keyspace
 
@@ -196,5 +198,127 @@ build /zk/test_nj/vt/ns/test_keyspace
     /zk/test_nj/vt/ns/test_keyspace/1/replica       => json(VtnsAddrs)
 
 
+ReparentShard
+-------------
+
+vtctl ReparentShard /zk/global/vt/keyspaces/test_keyspace/shards/0 /zk/test_nj/vt/tablets/0000062344
+
+::
+
+    从 zk 读取 shardInfo
+    从 shardInfo 获取 currentMasterTablet
+
+    create SHARD_ACTION_REPARENT for lock
+
+    从shardInfo里构造所有的 slaveTablets，形成 slaveTabletMap := make(map[uint32]*tm.TabletInfo)
+    
+    if currentMasterTablet != electMasterTablet {
+        if currentMasterTablet is master {
+            demoteMaster(currentMasterTablet)
+        }
+
+        构造需要restart的slave列表，其中lag类型被排除
+
+        对每个restartable slave，检查与master position的数据一致性
+    } else {
+        // forcing reparent to same master
+        foreach slave in slaveTabletMap {
+            STOP SLAVE;
+        }
+
+        break currentMasterTablet slaves {
+            INSERT INTO _vt.replication_log (time_created_ns, note) VALUES
+            SET sql_log_bin = 0
+            DELETE FROM _vt.replication_log WHERE time_created_ns = %v
+            SET sql_log_bin = 1
+            INSERT INTO _vt.replication_log (time_created_ns, note) VALUES
+        }
+    }
+
+    promoteSlave(electMasterTablet) {
+        if zk(action/restart_slave_data.json) exists {
+            error
+        }
+        if master {
+            show master status;
+        } else {
+            show slave status;
+        }
+        reset master;
+        reset slave;
+        show master status;
+        INSERT INTO _vt.replication_log (time_created_ns, note) VALUES (1354179516856589000, 'reparent check')
+        show master status;
+        INSERT INTO _vt.reparent_log (time_created_ns, last_position, new_addr, new_position, wait_position) 
 
 
+        delete old zk replication graph
+        update zk tablet node
+        create new zk replication graph
+    }
+
+    foreach slave {
+        restart slave {
+            stop slave;
+            reset slave;
+            change master to ...
+            start slave;
+
+            wait till Slave_SQL_Running and Slave_IO_Running
+
+            SELECT MASTER_POS_WAIT
+
+            SELECT * FROM _vt.replication_log WHERE time_created_ns = xx
+        }
+    }
+
+
+
+
+
+
+
+
+    unlock
+
+
+
+
+
+vttablet
+========
+
+start
+-----
+
+vttablet -port 6701 -tablet-path /zk/test_nj/vt/tablets/0000062344 -logfile /vt/vt_0000062344/vttablet.log 
+
+
+
+mysql
+=====
+
+my.cnf
+------
+
+- log-bin=[basename]
+
+  bin log files basename
+
+- log-slave-updates
+
+
+control cmd
+-----------
+
+- set sql_log_bin=0|1
+
+  enable/disable binary logging
+
+- binlog-do-db / binlog-ignore-db
+
+  on master, control which db do/ignore replication
+
+- replicate-do-db / replicate-ignore-db
+
+  on slave
