@@ -81,16 +81,17 @@ Abstraction
     keyspace o----|
                   |- shard2
                   |               1 master
-                  |              --------------- tablet
+                  |              --------------- tablet --- ActionAgent
                    - shardN o---|
+                                |
+                                |
+                                |
+                                |
                                 | N replica               - type
                                 |--------------- tablet -|- key range
                                 |                         - parent
                                 | N rdonly
-                                |--------------- tablet
-                                |
-                                | N batch
-                                |--------------- tablet
+                                |--------------- tablet(for olap)
                                 |
                                 | N spare
                                 |--------------- tablet(not serving query)
@@ -115,6 +116,21 @@ Abstraction
                                 |
                                 | N scrap
                                  --------------- tablet
+
+
+StateMachine
+------------
+
+::
+            promoteSlave
+    replica -----------> (master, rw)
+
+           demoteMaster
+    master -----------> (master, ro)
+
+      setReadOnly
+    T ----------> (T, ro/rw)
+
 
 
 tabletReplicationPath = /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344
