@@ -46,6 +46,8 @@ Abstraction
 
 - keyspace
 
+  a keyspace has many shards
+
   default tablet db name = vtDbPrefix('vt_') + tablet.Keyspace
 
   All tables that are indexed by a set of keys are known as a keyspace, which basically represents the logical database that combines all the shards that store them.
@@ -53,6 +55,18 @@ Abstraction
 - shard
 
   一个shard内只有1个 masterTablet
+
+  shards are at the keyspace(db) level, not table level
+
+- tablet
+
+  - stay in a shard in a keyspace
+
+  - has parent
+
+  - has key range
+
+  - has tablet type
 
 - cell
 
@@ -62,9 +76,46 @@ Abstraction
 ::
 
 
-        keyspace
-          shard
-            tablet
+                   - shard1
+                  |
+    keyspace o----|
+                  |- shard2
+                  |               1 master
+                  |              --------------- tablet
+                   - shardN o---|
+                                | N replica               - type
+                                |--------------- tablet -|- key range
+                                |                         - parent
+                                | N rdonly
+                                |--------------- tablet
+                                |
+                                | N batch
+                                |--------------- tablet
+                                |
+                                | N spare
+                                |--------------- tablet(not serving query)
+                                |
+                                | N upgrade
+                                |--------------- tablet(applying schema change)
+                                |
+                                | N idle                 
+                                |--------------- tablet(no keyspace, shard assigned) 
+                                |                      
+                                | N backup
+                                |--------------- tablet
+                                |
+                                | N restore
+                                |--------------- tablet(idle -> restore -> spare)
+                                |
+                                | N lag
+                                |--------------- tablet
+                                |
+                                | N lag_orphan
+                                |--------------- tablet
+                                |
+                                | N scrap
+                                 --------------- tablet
+
 
 tabletReplicationPath = /zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344
 
@@ -142,6 +193,8 @@ CreateKeyspace
 
 InitTablet
 ----------
+
+specify keyspace, shard, parent, key_start/key_end, tablet type
 
 /zk/global/vt/keyspaces/test_keyspace/shards
 /zk/global/vt/keyspaces/test_keyspace/shards/0
