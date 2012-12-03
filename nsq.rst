@@ -33,7 +33,7 @@ Arch
 
         client
 
-                    nsqlookupd(4160/1)
+                    nsqlookupd(4160/1) ------------ nsadmin(4171)
                         |
                         | register
                         | heartbeat
@@ -42,4 +42,36 @@ Arch
         -------------------------------------
        |             |       |       |       |
     nsqd(4150/1)    nsqd    nsqd    nsqd    nsqd
+       |
+       |- topic
+       |- topic
+        - topic
+            |
+            |- channel
+            |- channel
+             - channel
+                  |
+                  |- client(consumer)
+                  |- client(consumer)
+                   - client(consumer)
 
+
+Protocol
+========
+
+Client
+------
+
+::
+
+    client                  nsqd
+       |                      |
+       | SUB                  |
+       |--------------------->|
+       |                      |
+       | RDY n                |
+       |--------------------->|
+       |                      |
+       |                      |
+       |                      |
+       |                      |
