@@ -150,6 +150,22 @@ Abstraction
                                 | N scrap
                                  --------------- tablet
 
+
+TabletType
+----------
+
+============== ==========
+Type           Desc
+============== ==========
+TYPE_IDLE      InitTablet时，只有它和TYPE_MASTER不自动计算parent; ChangeType时，检查如果它是MASTER，要确保先去掉replication关系; 建ReplicationGraph时，它被忽略；
+============== ==========
+
+
+
+STATE_READ_ONLY
+STATE_READ_WRITE
+
+
 MysqlCtl
 --------
 
@@ -516,6 +532,13 @@ Restore
     reset slave
     change master to xxx
     start slave
+
+
+Split
+-----
+
+
+
 
 
 

@@ -98,5 +98,50 @@ iTunes network traffic analysis
         下载完成后，向服务器汇报
 
 
+搜索
+----------
+
+::
+
+    GET http://ax.search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?q=eve
+    GET http://ax.search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?q=evernote
+
+    GET http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=evernote
+
+
+进入某个app明细页
+-------------------------
+
+::
+
+
+    GET https://itunes.apple.com/cn/app/yin-xiang-bi-ji/id406056744?mt=12&guid=C82A1430E527
+
+    GET https://itunes.apple.com/customer-reviews/id406056744?displayable-kind=30&l=zh&guid=C82A1430E527
+
+    GET http://myapp.itunes.apple.com/WebObjects/MZAppPersonalizer.woa/wa/customersAlsoBoughtFragment?l=zh&sd=406056744&guid=C82A1430E527
+
+    POST https://se.itunes.apple.com/WebObjects/MZStoreElements.woa/wa/buyButtonMetaData?guid=C82A1430E527&cc=cn
+
+    POST https://metrics.mzstatic.com/WebObjects/MZUserXP.woa/wa/recordStats?version=2.1&eventType=ITSLoadTimes&guid=C82A1430E527
+
+    POST https://metrics.mzstatic.com/WebObjects/MZUserXP.woa/wa/recordStats?version=2.1&eventType=ITSOmniture&guid=C82A1430E527
+
+    GET https://securemetrics.apple.com/b/ss/applesuperglobal/1/H.20.3/s05786518459208?v12=MacAppStore%2F1.1.2%20(Macintosh%3B%20U%3B%20Intel%20Mac%20OS%20X%2010.7.5%3B%20zh-Hans)%20AppleWebKit%2F534.57.7&ch=Software%20Pages&c=24&AQB=1&guid=C82A1430E527&r=http%3A%2F%2Fax.search.itunes.apple.com%2FWebObjects%2FMZSearch.woa%2Fwa%2Fsearch%3Fq%3Devernote&s=1280x800&t=12%2F11%2F2012%2016%3A19%3A14%203%20-480&c12=MacAppStore%2F1.1.2%20(Macintosh%3B%20U%3B%20Intel%20Mac%20OS%20X%2010.7.5%3B%20zh-Hans)%20AppleWebKit%2F534.57.7&g=https%3A%2F%2Fitunes.apple.com%2Fcn%2Fapp%2Fyin-xiang-bi-ji%2Fid406056744%3Fmt%3D12%26guid%3DC82A1430E527&v22=HTML&products=Evernote-Evernote-406056744&v=Y&h5=appleitmsxxap%2Cappleitmscnap&ndh=1&pageName=Software-CN-Evernote-Evernote-406056744&bw=1000&cl=15778463&ce=UTF-8&k=Y&bh=699&AQE=1&c22=HTML&sfcustom=1
+
+
+
+提交review
+------------
+
+::
+
+    
+    POST https://userpub.itunes.apple.com/WebObjects/MZUserPublishing.woa/wa/userRateContent?rating=4&id=406056744&displayable-kind=30&guid=C82A1430E527
+
+
+    对别人的评价，觉得有帮助吗？
+    POST https://userpub.itunes.apple.com/WebObjects/MZUserPublishing.woa/wa/rateUserReview?userReviewId=691686393&guid=C82A1430E527
+        form: vote=1
 
 

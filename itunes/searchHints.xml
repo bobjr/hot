@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0">
+  <dict>
+    <key>title</key>
+    <string>建议</string>
+    <key>hints</key>
+    <array>
+      <dict>
+        <key>term</key>
+        <string>evernote</string>
+        <key>priority</key>
+        <integer>6429</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=evernote&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>bubble browser for evernote</string>
+        <key>priority</key>
+        <integer>2099</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=bubble%20browser%20for%20evernote&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>taggy for evernote</string>
+        <key>priority</key>
+        <integer>777</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=taggy%20for%20evernote&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>memory lane - moving wallpaper for evernote</string>
+        <key>priority</key>
+        <integer>61</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=memory%20lane%20-%20moving%20wallpaper%20for%20evernote&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>cloud outliner - cross-platform outline creator with evernote integration</string>
+        <key>priority</key>
+        <integer>0</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=cloud%20outliner%20-%20cross-platform%20outline%20creator%20with%20evernote%20integration&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>everport - for moving 37signals' backpack data to evernote</string>
+        <key>priority</key>
+        <integer>0</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=everport%20-%20for%20moving%2037signals%27%20backpack%20data%20to%20evernote&amp;src=hint</string>
+      </dict>
+      <dict>
+        <key>term</key>
+        <string>notesdeck for dropbox, evernote and simplenote</string>
+        <key>priority</key>
+        <integer>0</integer>
+        <key>url</key>
+        <string>http://ax.search.itunes.apple.com/WebObjects/MZSearch.woa/wa/search?q=notesdeck%20for%20dropbox%2C%20evernote%20and%20simplenote&amp;src=hint</string>
+      </dict>
+    </array>
+  </dict>
+</plist>

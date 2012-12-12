@@ -3,14 +3,6 @@
 
   <plist version="1.0">
     <dict>
-       
-  
-    
-    
-    
-         
-    
-    
         <key>accountInfo</key>
         <dict>
     <key>appleId</key><string>jlyt872323@163.com</string>
@@ -31,37 +23,7 @@
 
 <key>creditBalance</key><string>1311811</string>
 <key>freeSongBalance</key><string>1311811</string>
-
-
-        
-        
-        
-    
-    
     <key>status</key><integer>0</integer>
-    
-    
-       
-       
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  
-
-
-    
     </dict>
   </plist>
-  
-
 
