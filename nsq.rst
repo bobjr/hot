@@ -9,6 +9,15 @@ nsq - a realtime mq
 .. contents:: Table Of Contents
 .. section-numbering::
 
+TODO
+====
+
+- nsqd
+
+  maxBytesPerFile
+  memQueueSize
+  syncEvery
+
 
 Features
 ============
