@@ -1,9 +1,12 @@
-# comment 
-CFLAGS = -g -Wall -O3 --std=c99
-LDFLAGS = -lm -lc
+#===============================================================
+# 'make -p' to checkout default variables and rules
+#===============================================================
+CFLAGS = -g -Wall -O3 --std=c99 `pkg-config --cflags sqlite3`
+LDFLAGS = -lm -lc `pkg-config --libs sqlite3`
 LDLIBS =
 CC = gcc
 PROGS = erf
+TRASHES = a.out erf.dSYM
 
 all: $(PROGS)
 
@@ -12,5 +15,4 @@ erf: erf.c
 
 clean:
 	$(RM) $(PROGS)
-	$(RM) a.out
-	$(RM) -r erf.dSYM
+	$(RM) -r $(TRASHES)
