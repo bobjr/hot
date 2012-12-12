@@ -105,4 +105,5 @@ autotools
 
     create Makefile.am  # automake
     autoscan
+    touch NEWS README AUTHORS ChangeLog
     autoreconf -iv
