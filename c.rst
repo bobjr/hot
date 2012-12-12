@@ -96,3 +96,13 @@ gprof
     gprof a.out
 
     valgrind ./a.out # memory checker, it run on its own vm instead of os
+
+
+autotools
+---------
+
+::
+
+    create Makefile.am  # automake
+    autoscan
+    autoreconf -iv
