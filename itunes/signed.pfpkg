@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="2">
+    <pkg-ref id="com.fuzebox.fuzemeetingmac">
+        <bundle-version>
+            <bundle CFBundleShortVersionString="3.0.0" CFBundleVersion="3.0.42033" id="com.fuzebox.fuzemeetingmac" path="Fuze.app"/>
+        </bundle-version>
+    </pkg-ref>
+    <product id="com.fuzebox.fuzemeetingmac" version="3.0.0"/>
+    <title>Fuze</title>
+    <options customize="never" require-scripts="false" hostArchitectures="x86_64" productKBytes="14198"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="10.8"/>
+        </allowed-os-versions>
+    </volume-check>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.fuzebox.fuzemeetingmac"/>
+        </line>
+    </choices-outline>
+    <choice id="default" title="Fuze" versStr="3.0.0"/>
+    <choice id="com.fuzebox.fuzemeetingmac" title="Fuze" visible="false" customLocation="/Applications">
+        <pkg-ref id="com.fuzebox.fuzemeetingmac"/>
+    </choice>
+    <pkg-ref id="com.fuzebox.fuzemeetingmac" version="3.0.0" onConclusion="none" installKBytes="33501">#com.fuzebox.fuzemeetingmac.pkg</pkg-ref>
+</installer-gui-script>

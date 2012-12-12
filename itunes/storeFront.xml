@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> 
+
+  <plist version="1.0">
+    <dict>
+       
+  
+    
+    
+    
+         
+  
+  
+  <key>jingleDocType</key><string></string>
+  <key>jingleAction</key><string></string>
+  
+  <key>action</key>
+  <dict>
+    <key>kind</key><string>Goto</string>
+    <key>url</key><string>https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewGrouping?cc=cn&amp;guid=C82A1430E527&amp;id=29562&amp;mt=12</string>
+    
+  </dict>
+  
+       
+       
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  
+
+
+    
+    </dict>
+  </plist>
+  
+
+

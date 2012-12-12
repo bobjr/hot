@@ -22,8 +22,7 @@ iTunes network traffic analysis
         plist of local softwares
 
     POST http://EVIntl-ocsp.verisign.com/
-        ocsp-request
-        ocsp-response
+        ocsp-request, ocsp-response
 
     GET  https://itunes.apple.com/WebObjects/MZStore.woa/wa/storeFront?guid=C82A1430E527
         goto https://itunes.apple.com/WebObjects/MZStore.woa/wa/viewGrouping?cc=cn&guid=C82A1430E527&id=29562&mt=12
@@ -77,7 +76,7 @@ iTunes network traffic analysis
 
     弹出apple id登录框
 
-    GET https://p50-buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate?password=XXXXXXXX&rmp=0&why=purchase&attempt=1&appleId=jlyt999%40163.com&guid=C82A1430E527
+    GET https://p50-buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate?password=XXXXXXXX&rmp=0&why=purchase&attempt=1&appleId=YYYYYYYY%40163.com&guid=C82A1430E527
 
 
 下载
@@ -86,15 +85,18 @@ iTunes network traffic analysis
 ::
 
     POST https://p50-buy.itunes.apple.com/WebObjects/MZBuy.woa/wa/buyProduct?guid=C82A1430E527
-        cancel download url =
-        https://p50-buy.itunes.apple.com/WebObjects/MZFastFinance.woa/wa/songDownloadDone?download-id=500001662224635&cancel=1
+        req form: productType=C&pricingParameters=STDQ&salableAdamId=568494494&price=0&appExtVrsId=11750382&origPage=Genre-CN-Desktop%20Applications-39&origPageCh=Desktop%20Apps-main&origPageLocation=Grid_%E6%97%B6%E4%B8%8B%E7%83%AD%E9%97%A8%7CLockup_1%7CBuy&creditDisplay=%C2%A570.00&guid=C82A1430E527&macappinstalledconfirmed=1
+        服务器端分配download-url, download-id, cacel_download_id, downloadKey(下周.pkg时用到，通过cookie传递)
 
     GET  http://a415.phobos.apple.com/us/r1000/067/Purple/v4/6b/27/41/6b27415a-540a-8683-bd19-dd4a0d1447d6/mzps2618483160685073283.pkg
         Cookie: downloadKey=expires=1355478385~access=/us/r1000/067/Purple/v4/6b/27/41/6b27415a-540a-8683-bd19-dd4a0d1447d6/mzps2618483160685073283.pkg*~md5=192798112c15601bbf461efa8f98bf0f
         这就是那个要下载的app包
-
-    GET  https://se.itunes.apple.com/WebObjects/MZStoreElements.woa/wa/personalizedAccountInfoFragment?guid=C82A1430E527&cc=cn   
-        再取一遍账户余额
+    GET  https://se.itunes.apple.com/WebObjects/MZStoreElements.woa/wa/personalizedAccountInfoFragment?guid=C82A1430E527&cc=cn
+        再取一遍账户余额，返回的JSON例如：{"welcomeMessage":"欢迎您，名", "creditBalance":"¥70.00"}
 
     GET https://p50-buy.itunes.apple.com/WebObjects/MZFastFinance.woa/wa/songDownloadDone?songId=568494494&download-id=500001662224635&Pod=50&guid=C82A1430E527
         下载完成后，向服务器汇报
+
+
+
+

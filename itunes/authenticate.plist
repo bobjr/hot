@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"> 
+
+  <plist version="1.0">
+    <dict>
+       
+  
+    
+    
+    
+         
+    
+    
+        <key>accountInfo</key>
+        <dict>
+    <key>appleId</key><string>jlyt872323@163.com</string>
+    <key>accountKind</key><string>0</string>
+    <key>address</key>
+    <dict>
+      <key>firstName</key><string>名</string>
+      <key>lastName</key><string>王</string>
+    </dict>
+  </dict>
+        <key>passwordToken</key><string>0CB7C6ADE4F8FD3300321D1D69CE8078</string>
+        <key>clearToken</key><string>30303030303031323936313030363338</string>
+        
+        <key>is-cloud-enabled</key><string>false</string>
+        
+        <key>dsPersonId</key><string>407245804</string>
+<key>creditDisplay</key><string>¥70.00</string>
+
+<key>creditBalance</key><string>1311811</string>
+<key>freeSongBalance</key><string>1311811</string>
+
+
+        
+        
+        
+    
+    
+    <key>status</key><integer>0</integer>
+    
+    
+       
+       
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  
+
+
+    
+    </dict>
+  </plist>
+  
+
+
