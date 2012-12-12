@@ -9,6 +9,38 @@ youtube's vitess
 .. contents:: Table Of Contents
 .. section-numbering::
 
+SQL
+===
+
+::
+
+    Driver
+      |
+      |- Open(name string) (Conn, error)
+
+    Execer
+      |
+      |- Exec(query string, args []Value) (Result, error)
+
+    Conn
+      |
+      |- Prepare(query string) (Stmt, error)
+      |- Close() error
+      |- Begin() (Tx, error)
+
+    Stmt
+      |
+      |- Close() error
+      |- Exec(args []Value) (Result, error)
+      |- Query(args []Value) (Rows, error)
+      |- NumInput() int
+
+    Tx
+      |
+      |- Commit() error
+      |- Rollback() error
+
+
 Features
 ========
 
@@ -77,7 +109,8 @@ Abstraction
 
 
                    - shard1
-                  |
+                  |    |
+                  |     - KeyRange
     keyspace o----|
                   |- shard2
                   |               1 master
@@ -88,7 +121,7 @@ Abstraction
                                 |
                                 |
                                 | N replica               - type
-                                |--------------- tablet -|- key range
+                                |--------------- tablet -|- KeyRange
                                 |                         - parent
                                 | N rdonly
                                 |--------------- tablet(for olap)
@@ -102,8 +135,8 @@ Abstraction
                                 | N idle                 
                                 |--------------- tablet(no keyspace, shard assigned) 
                                 |                      
-                                | N backup
-                                |--------------- tablet
+                                | N backup                    clone
+                                |--------------- tablet(master----->backup)
                                 |
                                 | N restore
                                 |--------------- tablet(idle -> restore -> spare)
@@ -117,6 +150,15 @@ Abstraction
                                 | N scrap
                                  --------------- tablet
 
+MysqlCtl
+--------
+
+::
+
+    demoteMaster
+    promoteSlave
+
+    reparent
 
 StateMachine
 ------------
@@ -212,43 +254,6 @@ InitTablet
 
 specify keyspace, shard, parent, key_start/key_end, tablet type
 
-/zk/global/vt/keyspaces/test_keyspace/shards
-/zk/global/vt/keyspaces/test_keyspace/shards/0
-/zk/global/vt/keyspaces/test_keyspace/shards/0/action
-/zk/global/vt/keyspaces/test_keyspace/shards/0/actionlog
-/zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344
-/zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344/test_nj-0000062345
-/zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344/test_nj-0000062346
-/zk/global/vt/keyspaces/test_keyspace/shards/0/test_nj-0000062344/test_nj-0000062347
-/zk/global/vt/keyspaces/test_keyspace/shards/1
-/zk/global/vt/keyspaces/test_keyspace/shards/1/action
-/zk/global/vt/keyspaces/test_keyspace/shards/1/actionlog
-/zk/global/vt/keyspaces/test_keyspace/shards/1/test_nj-0000062349
-/zk/global/vt/keyspaces/test_keyspace/shards/1/test_nj-0000062349/test_nj-0000062350
-
-
-/zk/test_nj/vt/tablets/0000062344
-/zk/test_nj/vt/tablets/0000062344/action
-/zk/test_nj/vt/tablets/0000062344/actionlog
-/zk/test_nj/vt/tablets/0000062345
-/zk/test_nj/vt/tablets/0000062345/action
-/zk/test_nj/vt/tablets/0000062345/actionlog
-/zk/test_nj/vt/tablets/0000062346
-/zk/test_nj/vt/tablets/0000062346/action
-/zk/test_nj/vt/tablets/0000062346/actionlog
-/zk/test_nj/vt/tablets/0000062347
-/zk/test_nj/vt/tablets/0000062347/action
-/zk/test_nj/vt/tablets/0000062347/actionlog
-/zk/test_nj/vt/tablets/0000062348
-/zk/test_nj/vt/tablets/0000062348/action
-/zk/test_nj/vt/tablets/0000062348/actionlog
-/zk/test_nj/vt/tablets/0000062349
-/zk/test_nj/vt/tablets/0000062349/action
-/zk/test_nj/vt/tablets/0000062349/actionlog
-/zk/test_nj/vt/tablets/0000062350
-/zk/test_nj/vt/tablets/0000062350/action
-/zk/test_nj/vt/tablets/0000062350/actionlog
-
 if not master, auto set parent and replication path
 
 /zk/test_nj/vt/tablets/0000062344, uid = 0000062344
@@ -330,7 +335,12 @@ vtctl ReparentShard /zk/global/vt/keyspaces/test_keyspace/shards/0 /zk/test_nj/v
     
     if currentMasterTablet != electMasterTablet {
         if currentMasterTablet is master {
-            demoteMaster(currentMasterTablet)
+            demoteMaster(currentMasterTablet) {
+                FLUSH TABLES WITH READ LOCK
+                UNLOCK TABLES
+
+                tablet.state = STATE_READ_ONLY
+            }
         }
 
         构造需要restart的slave列表，其中lag类型被排除
@@ -452,7 +462,62 @@ ApplySchemaShard
     }
 
 
-    
+Clone
+-----    
+
+clone = snapshot + restore
+
+
+Snapshot
+--------
+
+::
+
+    tablet changeType to TYPE_BACKUP
+
+    CreateSnapshot {
+        if slave {
+            assert seconds_behind_master <= 5
+
+            stop slave
+        } else if master {
+            set readOnly
+        }
+
+        shutdown mysqld
+
+        createSnapshot() {
+            compress db files
+        }
+
+        dump json to manifest file
+
+        start mysqld
+
+        restore readOnly to origin value
+    }
+
+    changeType back to origin
+
+
+Restore
+-------
+
+::
+
+    assert target has no vt_ db
+
+    shutdown mysqld
+
+    fetchFile from 'source of snapshot tablet' via http and decompress gzip
+
+    start mysqld
+
+    reset slave
+    change master to xxx
+    start slave
+
+
 
 vttablet
 ========

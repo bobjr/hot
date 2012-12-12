@@ -16,6 +16,7 @@ iTunes network traffic analysis
 ::
 
     GET  http://ax.init.itunes.apple.com/bag.xml?ix=5
+        signature, certs, bag
 
     POST https://su.itunes.apple.com/WebObjects/MZSoftwareUpdate.woa/wa/availableSoftwareUpdates?l=zh&guid=C82A1430E527
         plist of local softwares
@@ -47,3 +48,53 @@ iTunes network traffic analysis
     GET  https://help.apple.com/numbers/mac/2.3/help/zh_CN.lproj/search.helpindex
 
     GET  http://www.apple.com.cn/hotnews/rss/hotnews.rss
+
+
+安装某个app
+================
+
+点击按钮后
+--------------
+
+::
+
+    按1下：
+
+    OPTIONS https://metrics.mzstatic.com/WebObjects/MZUserXP.woa/wa/recordStats?eventType=ITSOmniture&version=2.1
+
+    GET  https://securemetrics.apple.com/b/ss/applesuperglobal/1/H.20.3/s91445143322926?pageName=Genre-CN-Desktop%20Applicati39&bw=1000&ce=UTF-8&ndh=1&g=https%3A%2F%2Fitunes.apple.com%2FWebObjects%2FMZStore.woa%2Fwa%2FviewGrouping%3Fcc%3Dcn%26id%3D29562%26guid%3DC82A1430E527%26mt%3D12&guid=C82A1430E527&pe=lnk_o&c=24&k=Y&cl=15778463&s=1280x800&t=12%2F11%2F2012%2011%3A30%3A32%203%20-480&AQB=1&pev2=Genre-CN-Desktop%20Applications-39%7CGrid_%E6%96%B0%E5%93%81%E6%8E%A8%E8%8D%90%7CLockup_8%7CBuy&bh=699&sfcustom=1&AQE=1&v=Y&h5=appleitmsxxap%2Cappleitmscnap
+
+    POST https://metrics.mzstatic.com/WebObjects/MZUserXP.woa/wa/recordStats?version=2.1&eventType=ITSOmniture&guid=C82A1430E527
+
+    再按1下：
+
+    GET  http://a780.phobos.apple.com/us/r1000/091/Purple/v4/13/fc/b0/13fcb031-12ae-ea12-4903-190bb582c807/signed.dcr.3632305418074835009.pfpkg
+        os版本等合法性检查
+
+    与1 一样，记录统计信息
+
+    GET http://ax.init.itunes.apple.com/bag.xml?ix=5 
+
+    弹出apple id登录框
+
+    GET https://p50-buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate?password=XXXXXXXX&rmp=0&why=purchase&attempt=1&appleId=jlyt999%40163.com&guid=C82A1430E527
+
+
+下载
+---------
+
+::
+
+    POST https://p50-buy.itunes.apple.com/WebObjects/MZBuy.woa/wa/buyProduct?guid=C82A1430E527
+        cancel download url =
+        https://p50-buy.itunes.apple.com/WebObjects/MZFastFinance.woa/wa/songDownloadDone?download-id=500001662224635&cancel=1
+
+    GET  http://a415.phobos.apple.com/us/r1000/067/Purple/v4/6b/27/41/6b27415a-540a-8683-bd19-dd4a0d1447d6/mzps2618483160685073283.pkg
+        Cookie: downloadKey=expires=1355478385~access=/us/r1000/067/Purple/v4/6b/27/41/6b27415a-540a-8683-bd19-dd4a0d1447d6/mzps2618483160685073283.pkg*~md5=192798112c15601bbf461efa8f98bf0f
+        这就是那个要下载的app包
+
+    GET  https://se.itunes.apple.com/WebObjects/MZStoreElements.woa/wa/personalizedAccountInfoFragment?guid=C82A1430E527&cc=cn   
+        再取一遍账户余额
+
+    GET https://p50-buy.itunes.apple.com/WebObjects/MZFastFinance.woa/wa/songDownloadDone?songId=568494494&download-id=500001662224635&Pod=50&guid=C82A1430E527
+        下载完成后，向服务器汇报
