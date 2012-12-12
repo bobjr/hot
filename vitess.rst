@@ -80,7 +80,7 @@ Abstraction
 
   a keyspace has many shards
 
-  default tablet db name = vtDbPrefix('vt_') + tablet.Keyspace
+  default tablet db name = vtDbPrefix(`vt_`) + tablet.Keyspace
 
   All tables that are indexed by a set of keys are known as a keyspace, which basically represents the logical database that combines all the shards that store them.
 
@@ -154,16 +154,20 @@ Abstraction
 TabletType
 ----------
 
-============== ==========
+=================== ==========
 Type           Desc
-============== ==========
-TYPE_IDLE      InitTablet时，只有它和TYPE_MASTER不自动计算parent; ChangeType时，检查如果它是MASTER，要确保先去掉replication关系; 建ReplicationGraph时，它被忽略；
-============== ==========
-
-
-
+=================== ==========
+IsServingType       if not, will not rebuildShardSrvGraph, RebuildShardGraph, RebuildKeyspaceGraph
+IsReplicatingType   if not, will not CreateTabletReplicationPaths
+IsSlaveType
+IsAssigned
+TYPE_IDLE           InitTablet时，只有它和TYPE_MASTER不自动计算parent; ChangeType时，检查如果它是MASTER，要确保先去掉replication关系; 建ReplicationGraph时，它被忽略；
+TYPE_BACKUP         snapshot的时候检查，必须是该类型
+TYPE_RESTORE        restore时检查，必须是该类型
 STATE_READ_ONLY
 STATE_READ_WRITE
+=================== ==========
+
 
 
 MysqlCtl
@@ -180,6 +184,8 @@ StateMachine
 ------------
 
 ::
+
+
             promoteSlave
     replica -----------> (master, rw)
 
