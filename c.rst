@@ -104,6 +104,13 @@ autotools
 ::
 
     create Makefile.am  # automake
+
     autoscan
-    touch NEWS README AUTHORS ChangeLog
+
+    sed -e '10i\
+    AM_INIT_AUTOMAKE' \
+    < configure.scan > configure.ac # generate configure.ac
+
+    touch NEWS README AUTHORS ChangeLog # GNU coding standard
+
     autoreconf -iv
