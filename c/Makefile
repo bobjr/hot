@@ -1,15 +1,16 @@
 # comment 
 CFLAGS = -g -Wall -O3 --std=c99
+LDFLAGS = -lm -lc
 LDLIBS =
-CC = c99
+CC = gcc
 PROGS = erf
 
 all: $(PROGS)
 
-erf:
-	gcc -o erf erf.c -lm -lc -g -Wall -O3 --std=c99
+erf: erf.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ erf.c
 
 clean:
-	rm -f a.out
-	rm -f erf
-	rm -rf erf.dSYM
+	$(RM) $(PROGS)
+	$(RM) a.out
+	$(RM) -r erf.dSYM
