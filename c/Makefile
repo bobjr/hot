@@ -1,12 +1,12 @@
 #===============================================================
 # 'make -p' to checkout default variables and rules
 #===============================================================
-CFLAGS = -g -pg -Wall -O3 --std=c99 `pkg-config --cflags gsl` -DTEST_MYOP
+CFLAGS = -g -pg -Wall -O3 --std=c99 `pkg-config --cflags gsl` -DTEST_MYOP -fprofile-arcs -ftest-coverage
 LDFLAGS = -lm -lc `pkg-config --libs gsl`
 LDLIBS =
 CC = gcc
 PROGS = erf gsl_erf rand lib
-TRASHES = *.out *.dSYM
+TRASHES = *.out *.dSYM *.gc*
 
 all: $(PROGS)
 
@@ -21,6 +21,18 @@ gsl_erf: gsl_erf.c
 
 lib: lib.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ lib.c
+
+valgrind: rand
+	valgrind ./rand
+
+profile: rand
+	./rand
+	gprof rand
+
+coverage: rand
+	./rand
+	gcov rand.gcda
+	cat rand.c.gcov
 
 clean:
 	$(RM) $(PROGS)
