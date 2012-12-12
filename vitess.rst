@@ -537,7 +537,54 @@ Restore
 Split
 -----
 
+::
 
+    CreateSplitSnapshot {
+        get schema
+
+        get slave status
+
+        let mysqld be read-only
+
+        stop slave
+
+        FLUSH TABLES WITH READ LOCK
+
+        createSplitSnapshotManifest {
+            启动4个goroutine {
+                select into outfile from table where key >= startKey and key < endKey
+                tar and gz the exported table data files
+            }
+        }
+
+        UNLOCK TABLES
+
+        start slave if I'am slave, and wait for IO and sql thread started
+
+        restore readOnly orignal value
+    }
+
+    On an empty machine, RestoreFromPartialSnapshot {
+        set read only
+
+        use dbName, from jsonFile get 'create table xxx' schemas, and create the tables at once
+
+        copy compressed data files via HTTP
+
+        load data infile xxx into table tableName
+
+        SET GLOBAL vt_enable_binlog_splitter_rbr = 1
+        SET GLOBAL vt_shard_key_range_start = 
+        SET GLOBAL vt_shard_key_range_end = 
+        RESET SLAVE
+        change master to xx MASTER_LOG_FILE=xx MASTER_LOG_POS=xx
+
+        START SLAVE
+
+        while mySlaveStatus['Seconds_Behind_Master'] >= 5 {
+            sleep(1s)
+        }
+    }
 
 
 
