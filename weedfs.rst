@@ -251,6 +251,10 @@ datanode
         dataFile.seek(needle.offset)
         dataFile.read(needle.size)
 
+GC
+--
+
+delete files garbage collection
 
 TestCase
 --------
