@@ -3,11 +3,11 @@ weed-fs
 =========================
 
 :Author: Gao Peng <funky.gao@gmail.com>
-:Description: a distributed file system in golang.
+:Description: A distributed file system in golang.
+              
               Another facebook haystack implementation in golang.
 
               It is a key~blob mapping.
-:Revision: $Id$
 
 .. contents:: Table Of Contents
 .. section-numbering::
@@ -17,7 +17,9 @@ TODO
 
 - what if we prevent from dup file contents?
 
-- how replication done?
+- what if repl 3 fail 1?
+
+  what if it recovers?
 
 - count is for what?
 
@@ -28,53 +30,189 @@ Architecture
 
 通过配置文件xml知道某个ip在哪个ds/rack
 
-FileId:
+fid
+---
+
+#. VolumnId uint32
+
+#. File Key uint64(variable length)
+
+#. File Cookie uint32(fixed length)
+
+#. delta(optional)
+
+::
+
+            3
+            --------
+        3,01637037d6_3
+        - --
+        1 2
+
+      FileKey = (2+3)[0:len-4]
 
 ::
 
     Key = Uint64toBytes(SequencerVal)
     Cookie = Uint32toBytes(rand.Uint32())
 
-    final = vid, hex.EncodeToString(Key + Cookie)
+    final = VolumeId, hex.EncodeToString(Key + Cookie)
 
 
 Node.freeSpace = maxVolCnt - activeVolCnt
 
 每个volume的最大空间的固定的：32G，因此cnt就觉得了可以容纳多大的空间
 
+Heartbeat
+---------
+
+默认5秒钟
+
+join
+^^^^
+
+::
+
+        dataNode {
+            on startup {
+                load existing volumes
+            }
+
+            every 5s {
+                post http://master/dir/join {
+                    my{
+                           ip, port, publicUrl, maxVolumeCount,
+                           stats {
+                               each volume{vid, size, repType}
+                           }
+                       }
+                }
+            }
+        }
+
+        master {
+            RegisterVolumes {
+                根据datanode ip，获取或创建其datacenter, rack
+                根据lastSeen判断是新加入的还是recover的datanode {
+                    如果在3次心跳，还没有某个datanode的join，则认为它Dead {
+                        UnRegisterDataNode {
+                            foreach this datanode's volumes {
+                                its volumeLayout.setVolumeUnavailable(dn, vid) {
+                                    从该 vid2location[vid] 里去除该dn
+                                    if 剩下的dn数 < replicaCount {
+                                        removeFromWritable(vid)
+                                    }
+                                }
+                            }
+                            adjust active volume acount
+                            unlink this datanode
+                        }
+                    }
+                }
+
+                if recover {
+                    tell topology recovery via channel
+                    topology long run goroutine {
+                        RegisterRecoveredDataNode {
+                            foreach this datanode's volumes {
+                                vl.SetVolumeAvailable(dn, vid) {
+                                    vid2location[vid].Add(dn)
+                                    如果该vid对应的datanode数 >- replicaCount {
+                                        setVolumeWritable(vid) // this vid become writable
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    add child node to this rack
+                }
+
+                foreach volume {
+                    根据 repType 找到其 volume layout, then {
+                        register volume {
+                            if 该vid对应的datanode数 == replicaCount {
+                                writables = append(writables, vid)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
 Write
 -----
 
-procedure
-
-::
-
-        dir/assign
-            |
-        
-            |
-        dir/assign
-            |
-        dir/assign
-
-
 ::
 
 
-            Client            MasterNode           VolumeNode(s)
-              |                    |                    |
-              |  dir/assign?       |                    |
-              |------------------->|                    |
-              |                    |                    |
-              | (fid, pubUrl)      |                    |
-              |<-------------------|                    |
-              |                                         |
-              | POST pubUrl/fid                         |
-              |------->-------------------------------->|
-              |                                         |
-              |                              {size: x}  |
-              |<--------------------------------<-------|
+            Client                                  MasterNode           VolumeNode(s)
+              |                                         |                    |
+              | dir/assign?replication=x&count=y        |                    |
+              |---------------------------------------->|                    |
+              |                                         |                    |
+              | (fid, pubUrl)                           |                    |
+              |<----------------------------------------|                    |
+              |                                                              |
+              | POST pubUrl/fid                                              |
+              |------->----------------------------------------------------->|
+              |                                                              |
+              |                                                   {size: x}  |
+              |<--------------------------------<----------------------------|
+              |                                                              |
 
+
+assign
+^^^^^^
+
+::
+
+    根据repType让topology预留volume layout空间 {
+        根据repType余留1-3个volume => [{volServer, vid=t.NextVolumeId()}, ...].foreach {
+            http://volServer/admin/assign_volume?volume=$vid&replicationType=$repType {
+                open(volumeDataFile, O_CREAT|O_RDWR)
+                readOrWriteSuperBlock()
+                open(volumeIndexFile, O_CREAT|O_RDWR)
+            }
+        }
+
+        这样，在master上就有了这样的topoloty map:
+        {
+            repType: VolumeLayout {
+                writables []vid
+                vid: {
+                    []DataNode
+                }
+            }
+        }
+    }
+
+    根据topology目前该repType的volume layout，选择出一个dataNode {
+        从writables里随机取一个vid，从而得到该vid上服务的datanodes = []DataNode
+        fid = NewFileId(vid, nextSeq, rand.Uint32())
+        datanode = datanodes[0]
+    }
+
+    Q: 如果拿到assign了，不去datanode上传，会怎样?
+    A:
+
+
+postFile
+^^^^^^^^
+
+::
+
+    new Needle from request
+    store.Write(vid, needle)a
+    replicaDataNodes = post('http://master/dir/lookup?volumeId=vid')
+    foreach replicaDataNodes {
+        upload('http://datanode/')
+    }
+
+    if any replica upload fails {
+        delete all uploads
+    }
 
 Read
 ----
@@ -97,9 +235,26 @@ Read
               |<-------------------------------------------------|
 
 
-Heartbeat
----------
+datanode
+^^^^^^^^
 
+::
+
+        if !store.HasVolume(vid) {
+            lookup where is the vid
+            redirect to that datanode
+
+            Q: 什么时候会出现这种情况
+        }
+
+        get needle info from index
+        dataFile.seek(needle.offset)
+        dataFile.read(needle.size)
+
+GC
+--
+
+delete files garbage collection
 
 TestCase
 --------
@@ -281,23 +436,3 @@ Abstractions
 
 
 
-fid
----
-
-#. VolumnId uint32
-
-# File Key uint64(variable length)
-
-#. File Cookie uint32(fixed length)
-
-#. delta(optional)
-
-::
-
-            3
-            --------
-        3,01637037d6_3
-        - --
-        1 2
-
-      FileKey = (2+3)[0:len-4]
