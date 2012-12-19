@@ -19,6 +19,8 @@ TODO
   syncEvery
 
 
+  tcp window
+
 Features
 ============
 
@@ -74,14 +76,21 @@ Arch
 
 ::
 
-                /----------------+
-                | RegistrationDB |
-                +----------------/
-                      |
-                nsqlookupd --------- nsadmin
+            nsqadmin
+               |
+        ------------------------------------------------------------
+       |                                                            |
+       |        /----------------+                                  |
+       |        | RegistrationDB |                                  |
+       |        +----------------/                                  |
+       |              |                                             |
+       |        nsqlookupd              nsqlookupd      nsqlookupd  |
+       |              |                     |               |       |
+        ------------------------------------------------------------
                      |  ^
            (OK, err) |  | IDENTIFY
                      |  | REGISTER $topic $channel
+                     |  | UNREGISTER $topic $channel
                      |  | PING
                      V  |
         -------------------------------------
@@ -161,3 +170,62 @@ workerId        = flag.Int64("worker-id", 0, "unique identifier (int) for this w
 memQueueSize    = flag.Int64("mem-queue-size", 10000, "number of messages to keep in memory (per topic)")
 maxBytesPerFile = flag.Int64("max-bytes-per-file", 104857600, "number of bytes per diskqueue file before rolling")
 
+
+::
+
+        incomingMsg
+        memoryMsg
+        backend
+
+
+        ${topic}.diskqueue.meta.dat
+        ${topic}.diskqueue.${fileNum}.dat
+
+
+
+        echo topic has a disk queue
+
+
+        nsqd                nsqlookupd
+         |                      |
+         | lookupLoop           |
+         |----------------------|
+         |                      |
+
+
+housekeeping
+------------
+
+::
+
+                    topic                       channel                 client
+                    -----                       -------                 ------
+         PUT          |                          |                          |
+     msg ------> incomingMsg                     |                          |
+                      |                          |                          |
+                      | router                   |                          |
+                      |                          |                          |
+             ---------------------               |                          |
+            |                     |              |                          |
+           backend          memoryMsg            |                          |
+            |                     |              |                          |
+             ---------------------               |                          |
+                      |                          |                          |
+                      | messagePump              |                          |
+                      |                          |                          |
+                      | PUT                      |                          |
+                       --------------------> incomingMsg                    |
+                                                 |                          |
+                                                 | router                   |
+                                                 |                          |
+                                      -------------------------             |
+                                     |                         |            |
+                                   backend                memoryMsg         |
+                                     |                         |            |
+                                      -------------------------             |
+                                                 |                          |
+                                                 | messagePump              |
+                                                 |                          |
+                                              clientMsg                    SUB
+                                                 |                          |
+                                                  ------------------> messagePump
