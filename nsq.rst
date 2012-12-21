@@ -9,17 +9,6 @@ nsq - a realtime mq
 .. contents:: Table Of Contents
 .. section-numbering::
 
-TODO
-====
-
-- nsqd
-
-  maxBytesPerFile
-  memQueueSize
-  syncEvery
-
-
-  tcp window
 
 Features
 ============
@@ -44,17 +33,8 @@ Features
 Arch
 ====
 
-Each channel receives all the messages from a topic. 
-
-The channels buffer data independently of each other, preventing a slow consumer from causing a 
-backlog for other channels. 
-
-A channel can have multiple clients, a message (assuming successful delivery) will only be delivered 
-to one of the connected clients, at random.
-
-In practice, a channel maps to a downstream service consuming a topic.
-
-For example:
+Usage
+-----
 
 ::
 
@@ -72,12 +52,13 @@ For example:
                                      |- client
 
 
-Arch
+Design
+------
 
 ::
 
-            nsqadmin
-               |
+                             nsqadmin
+                                |
         ------------------------------------------------------------
        |                                                            |
        |        /----------------+                                  |
@@ -92,32 +73,55 @@ Arch
                      |  | REGISTER $topic $channel
                      |  | UNREGISTER $topic $channel
                      |  | PING(15s)
-                     |  | 
-                     V  |       lookupLoop()
-        -------------------------------------
-       |             |       |       |       |
-     nsqd          nsqd    nsqd    nsqd    nsqd
-       |                                     |
-       |- idPump(workerId)                   | heartbeat(30s)  ??? timeout cleanup
-       |- lookupLoop()                       |
-       |                                    nsq
-        - topicS
-            |
-            |- router()
-            |- messagePump()
-            |
-             - channelS
+                     V  |       
+        ------------------------------------------------
+       |                        |       |       |       |
+       | lookupLoop             |       |       |       |
+       |                        |       |       |       |
+     nsqd                      nsqd    nsqd    nsqd    nsqd
+       |                                     
+       |- idPump(workerId)                  
+       |                                   
+       |- httpServer
+       |
+       |             NOP
+       |             PUB MPUB
+       |             SUB RDY FIN REQ CLS
+       |- tcpServer <----------------------------------------------> nsq reader
+       |    |                                                            ^
+       |  IOLoop()                                                       |
+       |    |                                                            |
+       |    | SUB topic/chan                                             |
+       |     ----------------- messagePump                               |
+       |                            |                                    |
+       |                            |- heartbeat                      - Send
+       |                             - client.Channel.clientMsgChan -|
+       |                                            ^                 - StartInFlightTimeout
+       |                                            |
+        - topicS                                     ---------------------------------------
+            |                                                                               |
+            |- router()                                                                     |
+            |    |                                                                          |
+            |     - incomingMsgChan => [memoryMsgChan | backend]                            |
+            |                                                                               |
+            |- if any channel, messagePump()                                                |
+            |    |                                                                          |
+            |     - [memoryMsgChan | backend] => dup(msg) => channel.incomingMsgChan        |
+            |                                                                               |
+             - channelS                                                                     |
+                  |                                                                         |
+                  |- incomingMsg => memoryMsg => inflighMsg => deferredMsg                  |
+                  |                                                                         |
+                  |- messagePump()                                                          |
+                  |     |                                                                   |
+                  |      - [memoryMsgChan | backend] => clientMsg --------------------------
                   |
-                  |- messagePump()
                   |- router()
-                  |- deferredWorker()
-                  |- inFlightWorker()
+                  |     |
+                  |      - incomingMsgChan => [memoryMsgChan | backend]
                   |
-                   - consumerS
-                        |
-                        |- IOLoop()
-                        |- messagePump()
-                        |-
+                  |- deferredWorker()
+                   - inFlightWorker()
 
 
 Protocol
