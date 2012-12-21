@@ -91,24 +91,33 @@ Arch
            (OK, err) |  | IDENTIFY
                      |  | REGISTER $topic $channel
                      |  | UNREGISTER $topic $channel
-                     |  | PING
-                     V  |
+                     |  | PING(15s)
+                     |  | 
+                     V  |       lookupLoop()
         -------------------------------------
        |             |       |       |       |
      nsqd          nsqd    nsqd    nsqd    nsqd
-       |
-       |- topic
-       |- topic
-        - topic
+       |                                     |
+       |- idPump(workerId)                   | heartbeat(30s)  ??? timeout cleanup
+       |- lookupLoop()                       |
+       |                                    nsq
+        - topicS
             |
-            |- channel
-            |- channel
-             - channel
+            |- router()
+            |- messagePump()
+            |
+             - channelS
                   |
-              msg |
-                  |- client(consumer)
-                  |- client(consumer)
-                   - client(consumer)
+                  |- messagePump()
+                  |- router()
+                  |- deferredWorker()
+                  |- inFlightWorker()
+                  |
+                   - consumerS
+                        |
+                        |- IOLoop()
+                        |- messagePump()
+                        |-
 
 
 Protocol
@@ -204,7 +213,7 @@ housekeeping
      msg ------> incomingMsg                     |                          |
                       |                          |                          |
                       | router                   |                          |
-                      |                          |                          |
+                      V                          |                          |
              ---------------------               |                          |
             |                     |              |                          |
            backend          memoryMsg            |                          |
@@ -229,3 +238,23 @@ housekeeping
                                               clientMsg                    SUB
                                                  |                          |
                                                   ------------------> messagePump
+                                                                            |
+                                                         ----------------------------------
+                                                        |               |                  |
+                                                     clientMsg      heartbeat           ExitChan
+                                                        |
+                                               -------------------------
+                                              |                         |
+                                            tcp Send            channel.StartInFlightTimeout
+
+
+
+
+
+::
+
+    
+    msgSize  timestamp        attempts  msgId                            msgBody
+    -------- ---------------- ----      -------------------------------- -------------
+    4B       8B               2B        16B
+
