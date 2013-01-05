@@ -15,3 +15,17 @@ Arch
 ::
 
 
+Client
+======
+
+Currently available clients:
+
+- php
+
+  https://github.com/mikespook/php_skynet
+
+- ruby
+
+  https://github.com/skynetservices/ruby_skynet
+
+Clients contain a pool of connections to a given service, up to a specified size to load balance requests across.
