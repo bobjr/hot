@@ -15,6 +15,21 @@ Arch
 ::
 
 
+
+                Client                       Doozerd                         Server
+                  |                            |                                |
+                  | NewClient(config)          |                                |
+                  |                            |                                |
+                  | Dial                       |                                |
+                  |--------------------------->|                                |
+                  |                            |                                |
+                  | NewInstanceMonitor         |                                |
+                  |--------------------------->|                                |
+                  |                            |                                |
+                  | GetService                 |                                |
+                  |                            |                                |
+
+
 Client
 ======
 
