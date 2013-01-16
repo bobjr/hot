@@ -8,8 +8,16 @@ Hystrix
 .. section-numbering::
 
 
+Important
+=========
+
+HystrixCommandProperties
+
+
 Numbers
 =======
+
+- 250 front end servers
 
 - 10+ billion thread isolated command execution/day
 
@@ -35,7 +43,13 @@ Numbers
             |
             V
 
-        20M * 2k = 40 billion/day
+        20M * 3k < 60 billion/day  按照访问量最大的时段来推导全天的总访问量
+
+
+        lzop -dcf lz.130115-152432|grep '/SAMPLE:1000/A'|cut -d' ' -f2|sort|uniq -c|sort -nr|wc -l
+        472
+
+        500 front end servers
 
 - 40+ thread pools
   
@@ -179,4 +193,32 @@ decorator for each service
                           |
                           |             consume
                 HystrixCommandMetrics ---------- HystrixCircuitBreaker
+
+
+Metrics
+=======
+
+HystrixRollingPercentile
+
+HystrixRollingNumber
+
+
+KProxy
+======
+
+::
+
+
+                  list.kproxy
+                  -----------
+        php         kproxy          servant
+         |             |               |
+         | call        |               |
+         |------------>| KXI Qurest    |
+         |             |-------------->|
+         |             |               |
+         |             |   KXI Answer  |
+         |     return  |<--------------|
+         |<------------|               |
+         |             |               |
 
